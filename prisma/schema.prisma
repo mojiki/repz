@@ -1,0 +1,93 @@
+// Repz - 筋トレ記録アプリ
+// データモデル定義 (設計ドキュメント 3章)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// 種目マスタ
+model Exercise {
+  id        Int      @id @default(autoincrement())
+  category  String // 大分類 (胸/背中/脚/肩/腕/その他)
+  name      String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sets             Set[]
+  templateExercises MenuTemplateExercise[]
+
+  @@unique([category, name])
+  @@map("exercises")
+}
+
+/// トレーニングセッション (1日1セッション想定)
+model WorkoutSession {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique // トレーニング日 (日付のみ利用)
+  memo      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sets Set[]
+
+  @@map("workout_sessions")
+}
+
+/// セット記録
+model Set {
+  id         Int      @id @default(autoincrement())
+  sessionId  Int      @map("session_id")
+  exerciseId Int      @map("exercise_id")
+  setNumber  Int      @map("set_number")
+  weight     Float // kg
+  reps       Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  session  WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exercise Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([exerciseId])
+  @@map("sets")
+}
+
+/// 体重記録 (トレーニングと独立)
+model BodyWeight {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique
+  weight    Float // kg
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("body_weights")
+}
+
+/// メニューテンプレート
+model MenuTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  exercises MenuTemplateExercise[]
+
+  @@map("menu_templates")
+}
+
+/// テンプレート種目
+model MenuTemplateExercise {
+  id             Int @id @default(autoincrement())
+  menuTemplateId Int @map("menu_template_id")
+  exerciseId     Int @map("exercise_id")
+  sortOrder      Int @default(0) @map("sort_order")
+
+  template MenuTemplate @relation(fields: [menuTemplateId], references: [id], onDelete: Cascade)
+  exercise Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([menuTemplateId])
+  @@map("menu_template_exercises")
+}

@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0b0f14;
+  --surface: #151b23;
+  --surface-2: #1e2732;
+  --border: #2a3441;
+  --foreground: #e8edf2;
+  --muted: #93a1b0;
+  --primary: #ff5a1f;
+  --primary-fg: #ffffff;
+  --accent: #38bdf8;
+  --good: #34d399;
+  --bad: #f87171;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, "Hiragino Sans",
+    "Noto Sans JP", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-border bg-surface p-4;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3
+      text-base font-semibold transition-transform select-none
+      border border-border bg-surface-2 text-foreground
+      active:scale-[0.99];
+  }
+  .btn-primary {
+    @apply border-transparent bg-primary text-primary-fg;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-muted;
+  }
+  .btn-sm {
+    @apply px-3 py-2 text-sm rounded-lg;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-border bg-surface-2 px-3 py-3
+      text-base text-foreground outline-none focus:border-accent;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full border border-border
+      bg-surface-2 px-2.5 py-1 text-xs text-muted;
+  }
 }

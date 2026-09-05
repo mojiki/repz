@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# repz
 
-## Getting Started
+ジムでスマホから使う、個人用の筋トレ記録 Web アプリ。
 
-First, run the development server:
+- 前回記録との比較（セッション単位 / セット単位）
+- 週間ボリューム可視化（種目別・全体、月曜始まり、今週 vs 前週の差分%）
+- 前回値の自動入力・重量ステッパー（±2.5kg）・セットコピー
+- PR（自己ベスト）バッジ … 推定1RM（Epley式）で判定
+- メニューテンプレート（ワンタップ展開）
+- 体重記録＋推移グラフ
+- セッション/セットの事後編集・削除（1日複数回の統合にも使用）
+- 種目マスタの追加・削除・並び替え
+- CSV エクスポート（バックアップ）
+- Basic 認証（`proxy.ts`、環境変数で有効化）
+
+詳細仕様は [docs/設計ドキュメント.md](docs/設計ドキュメント.md)。
+
+## 技術スタック
+
+| 項目 | 選定 |
+|---|---|
+| フレームワーク | Next.js 16 (App Router) |
+| DB | SQLite（ローカル）/ Turso（本番） |
+| ORM | Prisma 7 + `@prisma/adapter-libsql` |
+| UI | Tailwind CSS v4 / Recharts |
+| ホスティング | Vercel |
+
+## セットアップ（ローカル）
 
 ```bash
+npm install
+cp .env.example .env          # DATABASE_URL は file:./prisma/dev.db のままでOK
+npm run db:migrate            # マイグレーション適用（初回はDB作成）
+npm run db:seed               # 初期種目リストを投入
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 で起動。ローカルでは Basic 認証は無効（`.env` の `BASIC_AUTH_*` はコメントアウトのまま）。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### よく使うコマンド
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| コマンド | 用途 |
+|---|---|
+| `npm run db:migrate` | スキーマ変更のマイグレーション作成・適用 |
+| `npm run db:seed` | 初期種目の投入（既にあればスキップ） |
+| `npm run db:studio` | Prisma Studio でデータ閲覧 |
 
-## Learn More
+## デプロイ（Vercel + Turso）
 
-To learn more about Next.js, take a look at the following resources:
+1. **Turso で DB を作成**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   turso db create repz
+   turso db show repz --url          # libsql://repz-xxxx.turso.io
+   turso db tokens create repz       # 認証トークン
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. **スキーマを Turso に反映**（ローカルから一度だけ）
 
-## Deploy on Vercel
+   ```bash
+   DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>" npm run db:deploy
+   DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>" npm run db:seed
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. **Vercel の環境変数**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   | 変数 | 値 |
+   |---|---|
+   | `DATABASE_URL` | `libsql://repz-xxxx.turso.io` |
+   | `DATABASE_AUTH_TOKEN` | Turso のトークン |
+   | `BASIC_AUTH_USER` | 任意のユーザー名 |
+   | `BASIC_AUTH_PASSWORD` | 任意のパスワード |
+   | `APP_TZ_OFFSET_MINUTES` | `540`（JST。「今日」の判定に使用） |
+
+4. デプロイ。`proxy.ts` が `BASIC_AUTH_*` を検出して Basic 認証を有効化する。
+
+## データモデル
+
+`exercises` / `workout_sessions` / `sets` / `body_weights` / `menu_templates` / `menu_template_exercises`
+（[prisma/schema.prisma](prisma/schema.prisma) 参照）
+
+- 日付は `YYYY-MM-DD` として扱い、DB には UTC 0時の `DateTime` で保存。
+- 「今日」は `APP_TZ_OFFSET_MINUTES`（既定 JST）で判定。
+- 1日1セッション（`workout_sessions.date` は unique）。
+
+## 画面
+
+| パス | 内容 |
+|---|---|
+| `/` | トップ（記録導線・週間ボリューム・直近トレ・体重サマリ） |
+| `/record` | 大分類 / テンプレート選択 |
+| `/record/[category]` | 種目選択 |
+| `/record/exercise/[id]` | セット入力（前回値・PR判定・メモ） |
+| `/session/[date]` | セッション詳細・編集・削除 |
+| `/recent` | 直近セッションへリダイレクト |
+| `/volume` | 週間ボリューム詳細（週送り可） |
+| `/exercise/[id]` | 種目別の重量推移グラフ |
+| `/body-weight` | 体重記録・推移グラフ |
+| `/settings` | 種目マスタ / テンプレート管理 / CSV |
+| `/api/export` | CSV（`?type=bodyweight` で体重CSV） |
