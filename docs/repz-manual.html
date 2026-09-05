@@ -1,0 +1,653 @@
+<title>repz 取扱説明書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=IBM+Plex+Sans+JP:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --surface: #ffffff;
+    --surface-2: #efebe3;
+    --border: #e0dacf;
+    --border-strong: #c9c1b2;
+    --ink: #1d1a16;
+    --ink-soft: #635c50;
+    --accent: #db4718;
+    --accent-ink: #ffffff;
+    --flag: #8a6100;
+    --ok: #35734d;
+    --shadow: 0 1px 2px rgba(40, 30, 15, .06), 0 8px 24px -12px rgba(40, 30, 15, .12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161310;
+      --surface: #201c18;
+      --surface-2: #29241f;
+      --border: #352f28;
+      --border-strong: #484036;
+      --ink: #ece5da;
+      --ink-soft: #a49a8b;
+      --accent: #ff6d40;
+      --accent-ink: #1b0f07;
+      --flag: #e0ab53;
+      --ok: #6dc290;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px -14px rgba(0, 0, 0, .55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161310;
+    --surface: #201c18;
+    --surface-2: #29241f;
+    --border: #352f28;
+    --border-strong: #484036;
+    --ink: #ece5da;
+    --ink-soft: #a49a8b;
+    --accent: #ff6d40;
+    --accent-ink: #1b0f07;
+    --flag: #e0ab53;
+    --ok: #6dc290;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px -14px rgba(0, 0, 0, .55);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans JP", "Zen Kaku Gothic New", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 47rem; margin: 0 auto; padding: 0 clamp(1.1rem, 4vw, 2rem); }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+    font-size: .88em;
+  }
+  code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: .08em .38em;
+    white-space: nowrap;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  /* ---- header ---- */
+  header.top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  header.top .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 56px;
+  }
+  .mark {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 900;
+    font-size: 1.15rem;
+    letter-spacing: -.01em;
+    display: inline-flex;
+    align-items: baseline;
+    gap: .5ch;
+  }
+  .mark b { color: var(--accent); font-weight: 900; }
+  .mark span { font-weight: 500; font-size: .78rem; color: var(--ink-soft); letter-spacing: .04em; }
+  nav.jump { display: flex; gap: .1rem 1.15rem; flex-wrap: wrap; font-size: .8rem; justify-content: flex-end; }
+  nav.jump a { color: var(--ink-soft); text-decoration: none; white-space: nowrap; }
+  nav.jump a:hover { color: var(--accent); }
+  @media (max-width: 40rem) { nav.jump { display: none; } }
+
+  /* ---- hero ---- */
+  .hero { padding: clamp(2.4rem, 7vw, 4rem) 0 1.5rem; border-bottom: 1px solid var(--border); }
+  .hero h1 {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 900;
+    font-size: clamp(1.9rem, 6vw, 2.7rem);
+    line-height: 1.2;
+    letter-spacing: -.02em;
+    margin: 0 0 .6rem;
+    text-wrap: balance;
+  }
+  .hero p { margin: 0; color: var(--ink-soft); max-width: 36rem; }
+  .meta {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .7rem;
+    font-size: .8rem;
+  }
+  .meta span {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 999px;
+    padding: .2rem .7rem;
+    color: var(--ink-soft);
+  }
+  .meta span b { color: var(--ink); font-weight: 600; }
+
+  /* ---- sections ---- */
+  section { padding: 2.6rem 0; border-bottom: 1px solid var(--border); }
+  section > .wrap > h2 {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: -.01em;
+    margin: 0 0 .3rem;
+    display: flex;
+    align-items: baseline;
+    gap: .7ch;
+  }
+  section > .wrap > h2 .n {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .lede { color: var(--ink-soft); margin: 0 0 1.6rem; }
+
+  h3 {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 1.9rem 0 .5rem;
+  }
+  h3:first-of-type { margin-top: .4rem; }
+  p { margin: .55rem 0; }
+  ul, ol { margin: .55rem 0; padding-left: 1.3rem; }
+  li { margin: .3rem 0; }
+  li::marker { color: var(--ink-soft); }
+
+  /* numbered flow */
+  ol.flow { list-style: none; padding: 0; counter-reset: step; margin: 1rem 0; }
+  ol.flow > li {
+    counter-increment: step;
+    position: relative;
+    padding: .1rem 0 1rem 2.6rem;
+    border-left: 1px solid var(--border-strong);
+    margin-left: .8rem;
+  }
+  ol.flow > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.flow > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -0.85rem;
+    top: 0;
+    width: 1.7rem;
+    height: 1.7rem;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    font-weight: 500;
+    border-radius: 50%;
+  }
+  ol.flow > li b { font-weight: 600; }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; margin: 1.1rem 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .875rem; }
+  th, td { text-align: left; padding: .6rem .85rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  thead th {
+    font-family: "Zen Kaku Gothic New", sans-serif;
+    font-weight: 700;
+    font-size: .8rem;
+    color: var(--ink-soft);
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.mono, td .mono { font-family: "IBM Plex Mono", monospace; font-size: .82rem; white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .free { color: var(--ok); font-weight: 600; }
+
+  /* callouts */
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--ink-soft);
+    border-radius: 0 8px 8px 0;
+    padding: .85rem 1rem;
+    margin: 1.2rem 0;
+    font-size: .9rem;
+  }
+  .note.flag { border-left-color: var(--flag); }
+  .note.flag b { color: var(--flag); }
+  .note b { display: block; font-weight: 600; margin-bottom: .1rem; font-family: "Zen Kaku Gothic New", sans-serif; }
+
+  ul.checks { list-style: none; padding: 0; }
+  ul.checks > li {
+    position: relative;
+    padding-left: 1.6rem;
+    margin: .7rem 0;
+    font-size: .92rem;
+  }
+  ul.checks > li::before {
+    content: "▲";
+    position: absolute;
+    left: 0;
+    top: .05rem;
+    color: var(--flag);
+    font-size: .7rem;
+  }
+  ul.checks > li b { font-weight: 600; }
+
+  /* figure */
+  figure { margin: 1.4rem 0 .4rem; }
+  .figframe {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .figframe svg { display: block; min-width: 640px; width: 100%; height: auto; color: var(--ink-soft); }
+  figcaption { font-size: .82rem; color: var(--ink-soft); margin-top: .7rem; line-height: 1.6; }
+
+  .diag-box { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1.5; }
+  .diag-t { fill: var(--ink); font-family: "Zen Kaku Gothic New", sans-serif; font-weight: 700; font-size: 13px; }
+  .diag-s { fill: var(--ink-soft); font-family: "IBM Plex Sans JP", sans-serif; font-size: 10.5px; }
+  .diag-l { fill: var(--ink-soft); font-family: "IBM Plex Mono", monospace; font-size: 10px; }
+  .diag-line { stroke: var(--ink-soft); stroke-width: 1.5; fill: none; }
+  .diag-dash { stroke: var(--ink-soft); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+  .diag-accent { stroke: var(--accent); stroke-width: 2.5; fill: none; stroke-dasharray: 6 4; }
+  .diag-accent-t { fill: var(--accent); font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 500; }
+
+  footer { padding: 2.5rem 0 4rem; color: var(--ink-soft); font-size: .82rem; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    nav.jump a, tbody tr { transition: color .15s ease, background .15s ease; }
+  }
+  tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <span class="mark"><b>repz</b><span>取扱説明書</span></span>
+    <nav class="jump">
+      <a href="#use">使い方</a>
+      <a href="#stack">技術</a>
+      <a href="#arch">構成図</a>
+      <a href="#screens">画面</a>
+      <a href="#data">データ</a>
+      <a href="#ops">運用</a>
+      <a href="#cost">料金・注意</a>
+      <a href="#trouble">困ったとき</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>ジムでスマホから記録する、<br>1人用の筋トレ記録アプリ</h1>
+    <p>前回との比較・週間ボリューム・体重推移に絞った個人ツール。この文書は使い方と、後から自分が困らないための運用メモをまとめたもの。</p>
+    <div class="meta">
+      <span><b>公開先</b> Vercel（Basic認証）</span>
+      <span><b>データ</b> Turso（libSQL）</span>
+      <span><b>ソース</b> github.com/mojiki/repz</span>
+      <span><b>最終更新</b> 2026-09-06</span>
+    </div>
+  </div>
+</div>
+
+<section id="use">
+  <div class="wrap">
+    <h2><span class="n">01</span>基本的な使い方</h2>
+    <p class="lede">トップ画面から「記録する」「直近トレ」「体重」、右上から「設定」。ログインはブラウザに保存すれば以降は自動。</p>
+
+    <h3>トレーニングを記録する</h3>
+    <ol class="flow">
+      <li><b>大分類かメニューを選ぶ</b><br>胸・背中・脚・肩・腕・その他、または保存したメニューテンプレート。</li>
+      <li><b>種目を選ぶ</b><br>手入力はなし。無い種目は設定画面で追加する。</li>
+      <li><b>セットを入力する</b><br>前回同じ種目をやったときの各セットの重量・回数が初期値で入っている。重量は <code>−2.5 / +2.5</code>、回数は <code>−1 / +1</code> ボタン、直接入力も可。<b>＋ セット追加</b>で前回の対応セット（無ければ最後の行）をコピー。</li>
+      <li><b>保存する</b><br>推定1RM が自己ベストを超えたセットには <b>MAX更新!</b> バッジが付く。メモ欄はその日全体の共通メモ。</li>
+    </ol>
+    <div class="note">
+      <b>推定1RM の計算</b>
+      Epley 式 <code class="mono">重量 × (1 + 回数 ÷ 30)</code> を全セットで計算し、その最大値を自己ベストとして判定している（実際に1回挙げた重量ではなく推定値）。
+    </div>
+
+    <h3>前回・過去を見る</h3>
+    <ul>
+      <li><b>直近トレ</b> … 前回のトレーニング日の詳細へ。種目ごとのセット・ボリューム・推定1RM。ここから編集・削除もできる。</li>
+      <li><b>週間ボリューム</b> … ボリューム＝<code>重量 × 回数</code> の合計。週は<b>月曜始まり</b>。「今週 vs 前週」の合計と増減%。種目名をタップするとその種目の重量推移グラフ（MAX重量・推定1RM）。詳細画面では前週・翌週に移動できる。</li>
+    </ul>
+
+    <h3>体重</h3>
+    <ul>
+      <li>日付（既定は今日、過去日も選択可）＋体重を記録。同じ日にもう一度記録すると<b>上書き</b>。</li>
+      <li>推移グラフと、記録どうしの増減。一覧から個別に削除できる。</li>
+    </ul>
+
+    <h3>編集・削除（1日に複数回ジムに行ったとき）</h3>
+    <p>セッション詳細（<code>/session/日付</code>）で:</p>
+    <ul>
+      <li><b>編集</b> … その種目のセット入力画面を、その日付として開く。</li>
+      <li><b>種目を削除</b> … その日のその種目だけ削除。</li>
+      <li><b>この日に種目を追加</b> … 後から追記。2回目のジムぶんを1回目のセッションにまとめる用途。</li>
+      <li><b>このセッションを削除</b> … その日を丸ごと削除。</li>
+    </ul>
+
+    <h3>設定</h3>
+    <ul>
+      <li><b>種目</b> … 大分類＋種目名で追加（同じ分類の同名は不可）。名前はフィールドを編集してフォーカスを外すと保存。<code>▲▼</code> で大分類内の並び替え。削除するとその種目の過去記録も一緒に消える。</li>
+      <li><b>メニューテンプレート</b> … 作成 → 編集画面で種目を追加・並び替え。記録時に「メニューから選ぶ」で一覧展開。</li>
+      <li><b>CSV エクスポート</b> … トレーニング記録（日付・分類・種目・セット番号・重量・回数・ボリューム・メモ）と体重記録。UTF-8 BOM 付きで Excel でそのまま開ける。</li>
+    </ul>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="wrap">
+    <h2><span class="n">02</span>技術スタック</h2>
+    <p class="lede">サーバーサイドレンダリング中心の構成。専用の API サーバーは無く、画面から直接サーバー関数（Server Actions）を呼ぶ。CSV 出力だけ <code>/api/export</code>。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>層</th><th>技術</th><th>版</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td>フレームワーク</td><td class="mono">Next.js</td><td class="mono">16.3</td><td>画面（App Router）とサーバー処理。ビルドは Turbopack。</td></tr>
+          <tr><td>UI</td><td class="mono">React</td><td class="mono">19.2</td><td>コンポーネント。多くはサーバーコンポーネント。</td></tr>
+          <tr><td>言語</td><td class="mono">TypeScript</td><td class="mono">5</td><td>型付け</td></tr>
+          <tr><td>スタイル</td><td class="mono">Tailwind CSS</td><td class="mono">4</td><td>ユーティリティCSS。ダーク基調のモバイル前提。</td></tr>
+          <tr><td>グラフ</td><td class="mono">Recharts</td><td class="mono">3.10</td><td>体重・重量推移の折れ線</td></tr>
+          <tr><td>ORM</td><td class="mono">Prisma</td><td class="mono">7.10</td><td>DBアクセス・型生成・マイグレーション</td></tr>
+          <tr><td>DBドライバ</td><td class="mono">@prisma/adapter-libsql<br>@libsql/client</td><td class="mono">7.10<br>0.18</td><td>Prisma を libSQL（Turso）につなぐアダプタ</td></tr>
+          <tr><td>データベース</td><td class="mono">Turso</td><td>—</td><td>本番データ。SQLite 互換の libSQL をクラウドで。</td></tr>
+          <tr><td>ローカルDB</td><td class="mono">SQLite ファイル</td><td>—</td><td>開発用 <code>prisma/dev.db</code></td></tr>
+          <tr><td>認証</td><td class="mono">proxy.ts</td><td>—</td><td>Next.js のミドルウェア（16 で middleware から改名）で Basic 認証</td></tr>
+          <tr><td>ホスティング</td><td class="mono">Vercel</td><td>Hobby</td><td>ビルド・配信・サーバー実行</td></tr>
+          <tr><td>ソース管理</td><td class="mono">GitHub</td><td>Free</td><td><span class="mono">mojiki/repz</span>（private）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="arch">
+  <div class="wrap">
+    <h2><span class="n">03</span>フロントエンド / バックエンドの構成</h2>
+    <p class="lede">「画面を返すサーバー」と「DB」が Vercel と Turso に分かれているだけのシンプルな2段構成。分かりにくいのは、スキーマ変更だけが別ルートを通るところ。</p>
+
+    <figure>
+      <div class="figframe">
+        <svg viewBox="0 0 800 470" role="img" aria-label="ブラウザからのリクエストは proxy.ts の Basic 認証を通ってから Vercel 上の Next.js アプリに届き、Prisma と libSQL アダプタ経由で Turso のクラウド DB を読み書きする。デプロイは GitHub の main への push で Vercel が自動ビルドする。スキーマ変更と初期データ投入だけはローカル PC から db:push-turso で直接 Turso に流し込む。">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/>
+            </marker>
+            <marker id="ahA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+
+          <!-- runtime band -->
+          <text x="24" y="34" class="diag-l" style="fill:var(--ink)">リクエスト時</text>
+
+          <rect class="diag-box" x="24" y="52" width="150" height="66" rx="9"/>
+          <text x="99" y="82" text-anchor="middle" class="diag-t">ブラウザ</text>
+          <text x="99" y="100" text-anchor="middle" class="diag-s">スマホ・PC</text>
+
+          <line class="diag-line" x1="174" y1="85" x2="212" y2="85" marker-end="url(#ah)"/>
+          <text x="193" y="76" text-anchor="middle" class="diag-l">HTTPS</text>
+
+          <rect class="diag-box" x="214" y="52" width="150" height="66" rx="9"/>
+          <text x="289" y="82" text-anchor="middle" class="diag-t">proxy.ts</text>
+          <text x="289" y="100" text-anchor="middle" class="diag-s">Basic 認証ゲート</text>
+
+          <line class="diag-line" x1="364" y1="85" x2="402" y2="85" marker-end="url(#ah)"/>
+          <text x="383" y="76" text-anchor="middle" class="diag-l">通過</text>
+
+          <rect class="diag-box" x="404" y="52" width="196" height="66" rx="9"/>
+          <text x="502" y="80" text-anchor="middle" class="diag-t">Next.js アプリ</text>
+          <text x="502" y="98" text-anchor="middle" class="diag-s">Server Components / Actions（Vercel）</text>
+
+          <line class="diag-line" x1="600" y1="85" x2="642" y2="85" marker-end="url(#ah)"/>
+          <text x="621" y="74" text-anchor="middle" class="diag-l">Prisma +</text>
+          <text x="621" y="104" text-anchor="middle" class="diag-l">libSQL</text>
+
+          <rect class="diag-box" x="644" y="52" width="132" height="66" rx="9"/>
+          <text x="710" y="82" text-anchor="middle" class="diag-t">Turso</text>
+          <text x="710" y="100" text-anchor="middle" class="diag-s">libSQL クラウドDB</text>
+
+          <line x1="24" y1="150" x2="776" y2="150" stroke="var(--border-strong)" stroke-width="1" stroke-dasharray="2 3"/>
+
+          <!-- deploy row -->
+          <text x="24" y="180" class="diag-l" style="fill:var(--ink)">デプロイ時</text>
+
+          <rect class="diag-box" x="24" y="196" width="176" height="58" rx="9"/>
+          <text x="112" y="221" text-anchor="middle" class="diag-t">GitHub · main</text>
+          <text x="112" y="238" text-anchor="middle" class="diag-s">mojiki/repz</text>
+
+          <path class="diag-dash" d="M200 225 L300 225" marker-end="url(#ah)"/>
+          <text x="250" y="216" text-anchor="middle" class="diag-l">git push</text>
+
+          <rect class="diag-box" x="302" y="196" width="232" height="58" rx="9"/>
+          <text x="418" y="221" text-anchor="middle" class="diag-t">Vercel ビルド → 配信</text>
+          <text x="418" y="238" text-anchor="middle" class="diag-s">prisma generate &amp;&amp; next build</text>
+
+          <path class="diag-dash" d="M470 196 C 470 160, 500 140, 502 120" marker-end="url(#ah)"/>
+          <text x="486" y="172" text-anchor="middle" class="diag-l">反映</text>
+
+          <!-- schema special route -->
+          <text x="24" y="300" class="diag-accent-t" style="font-weight:700">スキーマ変更・初期投入だけ別ルート</text>
+
+          <rect class="diag-box" x="24" y="316" width="176" height="58" rx="9" style="stroke:var(--accent)"/>
+          <text x="112" y="341" text-anchor="middle" class="diag-t">ローカル PC</text>
+          <text x="112" y="358" text-anchor="middle" class="diag-s">開発環境</text>
+
+          <path class="diag-accent" d="M200 345 L440 345 L440 410 L710 410 L710 122" marker-end="url(#ahA)"/>
+          <text x="250" y="336" class="diag-accent-t">npm run db:push-turso</text>
+          <text x="448" y="403" text-anchor="middle" class="diag-accent-t">migration SQL を libSQL 経由で直接投入</text>
+
+          <!-- legend -->
+          <line class="diag-line" x1="24" y1="443" x2="50" y2="443" marker-end="url(#ah)"/>
+          <text x="58" y="447" class="diag-s">リクエスト時</text>
+          <line class="diag-dash" x1="170" y1="443" x2="196" y2="443" marker-end="url(#ah)"/>
+          <text x="204" y="447" class="diag-s">デプロイ・運用時</text>
+        </svg>
+      </div>
+      <figcaption>
+        リクエストは必ず <code>proxy.ts</code> の Basic 認証を通ってから Next.js に届く。DB クエリはサーバーコンポーネント／サーバーアクションの中でだけ実行され、ブラウザから DB へ直接つながる経路はない。<code>git push</code> すれば Vercel が自動でビルド・デプロイする。<strong>スキーマ変更と初期データ投入だけ</strong>は、ローカルから <code>db:push-turso</code> で Turso に直接反映する（Vercel のビルドは DB を触らない）。
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="screens">
+  <div class="wrap">
+    <h2><span class="n">04</span>画面一覧</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>パス</th><th>画面</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">/</td><td>トップ（記録導線・週間ボリューム・直近トレ・体重）</td></tr>
+          <tr><td class="mono">/record</td><td>大分類 / テンプレート選択</td></tr>
+          <tr><td class="mono">/record/[category]</td><td>種目選択</td></tr>
+          <tr><td class="mono">/record/exercise/[id]</td><td>セット入力（<code>?date=</code> で過去日に記録）</td></tr>
+          <tr><td class="mono">/record/template/[id]</td><td>テンプレートの種目を順に記録</td></tr>
+          <tr><td class="mono">/session/[date]</td><td>セッション詳細・編集・削除</td></tr>
+          <tr><td class="mono">/recent</td><td>直近セッションへ転送</td></tr>
+          <tr><td class="mono">/volume</td><td>週間ボリューム詳細（週送り）</td></tr>
+          <tr><td class="mono">/exercise/[id]</td><td>種目別の重量推移グラフ</td></tr>
+          <tr><td class="mono">/body-weight</td><td>体重の記録・グラフ</td></tr>
+          <tr><td class="mono">/settings</td><td>種目・テンプレート管理・CSV</td></tr>
+          <tr><td class="mono">/settings/templates/[id]</td><td>テンプレート編集</td></tr>
+          <tr><td class="mono">/api/export</td><td>CSV（<code>?type=bodyweight</code> で体重）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="data">
+  <div class="wrap">
+    <h2><span class="n">05</span>データの持ち方</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>テーブル</th><th>内容</th><th>主なカラム / 制約</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">exercises</td><td>種目マスタ</td><td><span class="mono">category, name, sort_order</span> ／ <span class="mono">(category, name)</span> は一意</td></tr>
+          <tr><td class="mono">workout_sessions</td><td>トレーニング日</td><td><span class="mono">date（一意）, memo</span> ／ 1日1件</td></tr>
+          <tr><td class="mono">sets</td><td>セット記録</td><td><span class="mono">session_id, exercise_id, set_number, weight, reps</span></td></tr>
+          <tr><td class="mono">body_weights</td><td>体重</td><td><span class="mono">date（一意）, weight</span></td></tr>
+          <tr><td class="mono">menu_templates</td><td>メニューテンプレート</td><td><span class="mono">name</span></td></tr>
+          <tr><td class="mono">menu_template_exercises</td><td>テンプレートの種目</td><td><span class="mono">menu_template_id, exercise_id, sort_order</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>セッションを削除するとその <code>sets</code> も消える。種目を削除するとその <code>sets</code> とテンプレート内の該当行も消える（カスケード）。</p>
+    <div class="note">
+      <b>日付とタイムゾーン</b>
+      日付は <code>YYYY-MM-DD</code> として扱い、DB には UTC 0時の日時で保存。「今日」の判定は環境変数 <code>APP_TZ_OFFSET_MINUTES</code>（既定 <code>540</code> = 日本時間）で行う。この値を消すと UTC 扱いになり、深夜のトレーニングが前日に記録される。
+    </div>
+  </div>
+</section>
+
+<section id="ops">
+  <div class="wrap">
+    <h2><span class="n">06</span>運用</h2>
+
+    <h3>ふだんのデプロイ</h3>
+    <p><code>git push</code> するだけ。Vercel が <code>prisma generate &amp;&amp; next build</code> で自動ビルド・公開する。ビルドは DB につながないので、環境変数が無くても通る。</p>
+
+    <h3>スキーマを変更したとき</h3>
+    <ol class="flow">
+      <li><b>スキーマを編集</b><br><code>prisma/schema.prisma</code> を書き換える。</li>
+      <li><b>ローカルに migration を作る</b><br><code>npm run db:migrate</code>（ローカルの SQLite に対して実行）。</li>
+      <li><b>Turso に反映する</b><br>PowerShell で:<br><code class="mono">$env:DATABASE_URL = "libsql://….turso.io?authToken=…"</code><br><code class="mono">npm run db:push-turso</code><br>migration の SQL を libSQL 経由で Turso に流し、種目シードも流す。</li>
+      <li><b>push する</b><br>コード側（Prisma Client の型など）を <code>git push</code> して Vercel を更新。</li>
+    </ol>
+    <div class="note flag">
+      <b>prisma migrate deploy は使わない</b>
+      Prisma 7 のスキーマエンジンは <code>libsql://</code> に接続できず <code>P1013</code> で失敗する。Turso への反映は必ず <code>npm run db:push-turso</code>（＝<code>scripts/setup-turso.ts</code>）を使う。
+    </div>
+
+    <h3>環境変数（Vercel）</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>キー</th><th>値</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">DATABASE_URL</td><td class="mono">libsql://repz-….turso.io</td></tr>
+          <tr><td class="mono">DATABASE_AUTH_TOKEN</td><td>Turso のトークン</td></tr>
+          <tr><td class="mono">BASIC_AUTH_USER</td><td>ログインID</td></tr>
+          <tr><td class="mono">BASIC_AUTH_PASSWORD</td><td>ログインパスワード</td></tr>
+          <tr><td class="mono">APP_TZ_OFFSET_MINUTES</td><td class="mono">540</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Vercel の Turso 連携を使う場合は <code>TURSO_DATABASE_URL</code> / <code>TURSO_AUTH_TOKEN</code> でも動くようにしてある。</p>
+
+    <h3>Turso の URL とトークンの取り方</h3>
+    <ol>
+      <li><a href="https://turso.tech">turso.tech</a> に GitHub でログイン。</li>
+      <li>Databases → Create Database（名前 <code>repz</code>、リージョンは東京 <code>nrt</code>）。</li>
+      <li>データベース詳細ページの「Connect」に出る <code>libsql://…</code> が URL。</li>
+      <li>同ページの「Create Token」で認証トークンを発行（画面を離れると再表示できないのでその場でコピー）。</li>
+    </ol>
+
+    <h3>バックアップ</h3>
+    <p>Turso 無料プランに自動バックアップは無い。<strong>月1回、設定画面から CSV を2種類ダウンロードして保存</strong>する運用にしておくと安全。</p>
+  </div>
+</section>
+
+<section id="cost">
+  <div class="wrap">
+    <h2><span class="n">07</span>料金と注意事項</h2>
+    <p class="lede">現状すべて無料枠。1人ぶんのトレーニング記録は数MBで、どのサービスの上限にも当分届かない。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>サービス</th><th>プラン</th><th class="num">月額</th><th>上限・注意</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Vercel</td><td>Hobby</td><td class="num free">¥0</td>
+            <td><b>個人・非商用のみ</b>。人に売る/広告を出す等の商用利用は Pro（$20/月）が必要。帯域 100GB/月・関数実行時間などの上限があるが、個人利用では問題にならない。</td>
+          </tr>
+          <tr>
+            <td>Turso</td><td>Free</td><td class="num free">¥0</td>
+            <td>無料枠が広く（ストレージ数GB、月間の読み書き行数も桁違いに余る）、当分課金は発生しない。長期間アクセスが無いと DB がスリープ/アーカイブされることがある → 再アクセスで復帰。</td>
+          </tr>
+          <tr>
+            <td>GitHub</td><td>Free</td><td class="num free">¥0</td>
+            <td>private リポジトリも無料。制限で困ることはない。</td>
+          </tr>
+          <tr>
+            <td>ドメイン</td><td>—</td><td class="num free">¥0</td>
+            <td><code>*.vercel.app</code> は無料。独自ドメインは任意（年 ¥1,500 前後）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>注意事項</h3>
+    <ul class="checks">
+      <li><b>認証は1組の共有ID/PW。</b>個人利用前提で、ユーザーごとのデータ分離はしていない。URL を人に教える＝そのままデータが見える。</li>
+      <li><b>自動バックアップは無い。</b>間違って全削除しても戻せない。定期的な CSV 保存が唯一の保険。</li>
+      <li><b><code>DATABASE_AUTH_TOKEN</code> は秘密情報。</b>漏れたら Turso ダッシュボードで再発行し、Vercel の環境変数も更新する。GitHub にコミットしない（<code>.env</code> は <code>.gitignore</code> 済み）。</li>
+      <li><b><code>APP_TZ_OFFSET_MINUTES=540</code> を消さない。</b>消すと「今日」が UTC 判定になり日付が9時間ずれる。</li>
+      <li><b>無料枠の内容は変わりうる。</b>Vercel も Turso も過去に無料プランを変更している。年1回くらい最新の料金ページを見ておく。</li>
+      <li><b>GitHub アカウント <code>akanagi2</code> を削除する前に</b>、Turso のログインにそのアカウントを使っていないか確認する（使っていると Turso ダッシュボードに入れなくなる）。</li>
+      <li><b>Vercel Hobby は「コミット作者＝アカウント本人」しかデプロイできない。</b>別アカウントのメールでコミットするとデプロイがブロックされる。<code>git config user.email</code> を Vercel 連携アカウントに合わせる。</li>
+    </ul>
+  </div>
+</section>
+
+<section id="trouble">
+  <div class="wrap">
+    <h2><span class="n">08</span>困ったとき</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>症状</th><th>原因と対処</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">P1013<br>database string is invalid</td>
+            <td><code>prisma migrate deploy</code> を Turso に対して実行している。<code>npm run db:push-turso</code> を使う。</td>
+          </tr>
+          <tr>
+            <td>ビルドで<br><span class="mono">DATABASE_URL … 設定されていません</span></td>
+            <td>古いコミットを Redeploy している可能性。最新の <code>main</code> をデプロイする。最新コードは env 無しでもビルドは通る。</td>
+          </tr>
+          <tr>
+            <td>Vercel:<br><span class="mono">commit author doesn't have permission</span></td>
+            <td>コミットの author メールが Vercel アカウントと不一致（Hobby の制限）。<code>git config user.email</code> を合わせて <code>git commit --amend --reset-author</code> → <code>git push --force</code>。</td>
+          </tr>
+          <tr>
+            <td>グラフが表示されない</td>
+            <td>データが2点以上必要。記録が1件だけだと線が引けない。</td>
+          </tr>
+          <tr>
+            <td>「今日」の日付がずれる</td>
+            <td><code>APP_TZ_OFFSET_MINUTES</code> が未設定または <code>540</code> 以外。</td>
+          </tr>
+          <tr>
+            <td>ローカルで <code>npm run dev</code> が<br>DB をロックする</td>
+            <td>別の dev サーバー / Prisma Studio が起動したまま。node プロセスを終了してから再実行。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>repz 取扱説明書</span>
+    <span>github.com/mojiki/repz</span>
+  </div>
+</footer>
