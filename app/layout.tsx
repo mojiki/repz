@@ -30,9 +30,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="text-xl font-black tracking-tight">
               <span className="text-primary">r</span>epz
             </Link>
-            <Link href="/settings" className="text-sm text-muted">
-              設定
-            </Link>
+            <nav className="flex items-center gap-4 text-sm text-muted">
+              <Link href="/help">使い方</Link>
+              <Link href="/settings">設定</Link>
+            </nav>
           </div>
         </header>
         <main className="mx-auto w-full max-w-md flex-1 px-4 py-4">{children}</main>
