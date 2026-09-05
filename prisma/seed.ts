@@ -1,10 +1,11 @@
 import path from "node:path";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { PrismaClient } from "../app/generated/prisma/client";
+import { resolveDbConfig } from "../lib/db-env";
 
 // 環境変数が未設定のときだけ .env を読む
 // (DATABASE_URL を明示的に渡して Turso 本番へ seed する場合は上書きしない)
-if (!process.env.DATABASE_URL) {
+if (!process.env.DATABASE_URL && !process.env.TURSO_DATABASE_URL) {
   try {
     process.loadEnvFile(path.join(__dirname, "..", ".env"));
   } catch {
@@ -12,11 +13,7 @@ if (!process.env.DATABASE_URL) {
   }
 }
 
-const adapter = new PrismaLibSql({
-  url: process.env.DATABASE_URL!,
-  authToken: process.env.DATABASE_AUTH_TOKEN,
-});
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({ adapter: new PrismaLibSql(resolveDbConfig()) });
 
 /** 大分類ごとの初期種目リスト */
 const INITIAL: Record<string, string[]> = {
