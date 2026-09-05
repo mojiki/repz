@@ -58,8 +58,17 @@ http://localhost:3000 で起動。ローカルでは Basic 認証は無効（`.e
 2. **スキーマを Turso に反映**（ローカルから一度だけ）
 
    ```bash
-   DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>" npm run db:deploy
-   DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>" npm run db:seed
+   export DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>"
+   npm run db:deploy
+   npm run db:seed
+   ```
+
+   `db:deploy` が Turso に繋がらない場合は、SQL を直接流し込む:
+
+   ```bash
+   npm run db:sql > schema.sql
+   turso db shell repz < schema.sql
+   npm run db:seed        # DATABASE_URL は上と同じものを設定した状態で
    ```
 
 3. **Vercel の環境変数**
