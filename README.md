@@ -68,25 +68,24 @@ http://localhost:3000 で起動。ローカルでは Basic 認証は無効（`.e
 
 3. **スキーマ適用＋初期投入**（ローカルから1回）
 
-   ```bash
-   # bash
-   export DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>"
-   npm run db:push-turso        # = prisma migrate deploy && prisma db seed
-   ```
-
    ```powershell
    # PowerShell
    $env:DATABASE_URL = "libsql://repz-xxxx.turso.io?authToken=<TOKEN>"
    npm run db:push-turso
    ```
 
-   繋がらない場合の代替:
-
    ```bash
-   npm run db:sql > schema.sql
-   turso db shell repz < schema.sql
-   npm run db:seed
+   # bash
+   export DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>"
+   npm run db:push-turso
    ```
+
+   `db:push-turso` = `tsx scripts/setup-turso.ts && prisma db seed`。
+   `setup-turso.ts` は libsql クライアントで `prisma/migrations/` の SQL を
+   Turso に流し込み `_prisma_migrations` に記録する（Prisma 7 の schema engine は
+   `libsql://` に接続できず `prisma migrate deploy` が P1013 になるための回避）。
+   スキーマ変更時も、`npm run db:migrate` でローカルに migration を作ってから
+   この手順を再実行すればよい。
 
 4. Vercel で Deploy。`proxy.ts` が `BASIC_AUTH_*` を検出して Basic 認証を有効化する。
    スキーマ変更時は手順3を再実行する。
