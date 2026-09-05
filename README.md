@@ -47,31 +47,13 @@ http://localhost:3000 で起動。ローカルでは Basic 認証は無効（`.e
 
 ## デプロイ（Vercel + Turso）
 
-1. **Turso で DB を作成**
+ビルドはマイグレーションを行わない（`prisma generate && next build` のみ）。
+スキーマ適用と初期投入は **ローカルから1回だけ** 行う。
 
-   ```bash
-   turso db create repz
-   turso db show repz --url          # libsql://repz-xxxx.turso.io
-   turso db tokens create repz       # 認証トークン
-   ```
+1. **Turso の DB を用意**（Turso ダッシュボード or Vercel の Turso 連携）
+   URL（`libsql://repz-xxxx.turso.io`）と認証トークンを取得。
 
-2. **スキーマを Turso に反映**（ローカルから一度だけ）
-
-   ```bash
-   export DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>"
-   npm run db:deploy
-   npm run db:seed
-   ```
-
-   `db:deploy` が Turso に繋がらない場合は、SQL を直接流し込む:
-
-   ```bash
-   npm run db:sql > schema.sql
-   turso db shell repz < schema.sql
-   npm run db:seed        # DATABASE_URL は上と同じものを設定した状態で
-   ```
-
-3. **Vercel の環境変数**
+2. **Vercel の環境変数**
 
    | 変数 | 値 |
    |---|---|
@@ -81,7 +63,33 @@ http://localhost:3000 で起動。ローカルでは Basic 認証は無効（`.e
    | `BASIC_AUTH_PASSWORD` | 任意のパスワード |
    | `APP_TZ_OFFSET_MINUTES` | `540`（JST。「今日」の判定に使用） |
 
-4. デプロイ。`proxy.ts` が `BASIC_AUTH_*` を検出して Basic 認証を有効化する。
+   Vercel の Turso 連携を使う場合は `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` が
+   自動セットされる（アプリはどちらの名前でも動く）。
+
+3. **スキーマ適用＋初期投入**（ローカルから1回）
+
+   ```bash
+   # bash
+   export DATABASE_URL="libsql://repz-xxxx.turso.io?authToken=<TOKEN>"
+   npm run db:push-turso        # = prisma migrate deploy && prisma db seed
+   ```
+
+   ```powershell
+   # PowerShell
+   $env:DATABASE_URL = "libsql://repz-xxxx.turso.io?authToken=<TOKEN>"
+   npm run db:push-turso
+   ```
+
+   繋がらない場合の代替:
+
+   ```bash
+   npm run db:sql > schema.sql
+   turso db shell repz < schema.sql
+   npm run db:seed
+   ```
+
+4. Vercel で Deploy。`proxy.ts` が `BASIC_AUTH_*` を検出して Basic 認証を有効化する。
+   スキーマ変更時は手順3を再実行する。
 
 ## データモデル
 
