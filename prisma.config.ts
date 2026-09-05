@@ -11,6 +11,17 @@ if (!process.env.DATABASE_URL) {
   }
 }
 
+// Turso: 認証トークンが別env (DATABASE_AUTH_TOKEN) にある場合は URL に載せる
+// (schema engine は adapter を使わず datasource.url だけを見るため)
+function datasourceUrl(): string | undefined {
+  const url = process.env.DATABASE_URL;
+  const token = process.env.DATABASE_AUTH_TOKEN;
+  if (!url || !token || url.includes("authToken=") || url.startsWith("file:")) {
+    return url;
+  }
+  return `${url}${url.includes("?") ? "&" : "?"}authToken=${token}`;
+}
+
 export default defineConfig({
   schema: path.join("prisma", "schema.prisma"),
   migrations: {
@@ -18,6 +29,6 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: datasourceUrl(),
   },
 });
