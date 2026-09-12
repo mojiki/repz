@@ -88,7 +88,12 @@ export default async function Home() {
         </div>
         {recent && recentDate ? (
           <>
-            <p className="text-xs text-muted">{formatLong(recentDate)}</p>
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs text-muted">{formatLong(recentDate)}</p>
+              <p className="text-xs text-muted">
+                その日のトータル {fmtKg(totalVolume(recent.sets))}
+              </p>
+            </div>
             <ul className="space-y-1 text-sm">
               {recentGroups.map((g) => {
                 const maxWeight = Math.max(...g.sets.map((s) => s.weight));
