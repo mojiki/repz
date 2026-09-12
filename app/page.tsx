@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { dateToStr, formatLong, todayStr } from "@/lib/date";
+import { totalVolume } from "@/lib/calc";
 import {
   getBodyWeights,
   getRecentSession,
@@ -89,14 +90,18 @@ export default async function Home() {
           <>
             <p className="text-xs text-muted">{formatLong(recentDate)}</p>
             <ul className="space-y-1 text-sm">
-              {recentGroups.map((g) => (
-                <li key={g.exercise.id} className="flex justify-between">
-                  <span className="truncate">{g.exercise.name}</span>
-                  <span className="text-muted">
-                    {g.sets.length}set / {Math.max(...g.sets.map((s) => s.weight))}kg
-                  </span>
-                </li>
-              ))}
+              {recentGroups.map((g) => {
+                const maxWeight = Math.max(...g.sets.map((s) => s.weight));
+                const volume = totalVolume(g.sets);
+                return (
+                  <li key={g.exercise.id} className="flex justify-between">
+                    <span className="min-w-0 truncate">{g.exercise.name}</span>
+                    <span className="ml-2 shrink-0 text-muted">
+                      最大重量{maxWeight}kg / トータル{fmtKg(volume)}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </>
         ) : (
