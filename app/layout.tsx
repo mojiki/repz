@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { BackToTop } from "@/components/BackToTop";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -36,7 +37,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </nav>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-md flex-1 px-4 py-4">{children}</main>
+        <main className="mx-auto w-full max-w-md flex-1 px-4 py-4">
+          {children}
+          <BackToTop />
+        </main>
       </body>
     </html>
   );
