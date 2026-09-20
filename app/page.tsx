@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { dateToStr, formatLong, todayStr } from "@/lib/date";
-import { totalVolume } from "@/lib/calc";
 import {
   getBodyWeights,
   getRecentSession,
+  getSessionByDate,
   getWeeklyVolume,
-  groupSetsByExercise,
 } from "@/lib/queries";
 import { VolumeDiff } from "@/components/VolumeDiff";
+import { DayTrainingCard } from "@/components/DayTrainingCard";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +17,13 @@ function fmtKg(n: number) {
 
 export default async function Home() {
   const today = todayStr();
-  const [weekly, recent, weights] = await Promise.all([
+  const [weekly, todaySession, recent, weights] = await Promise.all([
     getWeeklyVolume(today),
+    getSessionByDate(today),
     getRecentSession(today),
     getBodyWeights(),
   ]);
 
-  const recentGroups = recent ? groupSetsByExercise(recent.sets) : [];
   const recentDate = recent ? dateToStr(recent.date) : null;
   const latestWeight = weights.at(-1);
   const topRows = weekly.rows.slice(0, 5);
@@ -45,6 +45,24 @@ export default async function Home() {
           </Link>
         </div>
       </div>
+
+      {todaySession && todaySession.sets.length > 0 && (
+        <DayTrainingCard
+          title="今日トレ"
+          date={today}
+          sets={todaySession.sets}
+          viewAllHref={`/session/${today}`}
+          emptyMessage="まだ記録がありません"
+        />
+      )}
+
+      <DayTrainingCard
+        title="直近トレ"
+        date={recentDate}
+        sets={recent?.sets ?? []}
+        viewAllHref={recentDate ? `/session/${recentDate}` : undefined}
+        emptyMessage="まだ記録がありません"
+      />
 
       <section className="card space-y-3">
         <div className="flex items-baseline justify-between">
@@ -74,43 +92,6 @@ export default async function Home() {
           </ul>
         ) : (
           <p className="text-sm text-muted">今週はまだ記録がありません</p>
-        )}
-      </section>
-
-      <section className="card space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-bold">直近トレ</h2>
-          {recentDate && (
-            <Link href={`/session/${recentDate}`} className="text-xs text-accent">
-              全部見る →
-            </Link>
-          )}
-        </div>
-        {recent && recentDate ? (
-          <>
-            <div className="flex items-baseline justify-between">
-              <p className="text-xs text-muted">{formatLong(recentDate)}</p>
-              <p className="text-xs text-muted">
-                その日のトータル {fmtKg(totalVolume(recent.sets))}
-              </p>
-            </div>
-            <ul className="space-y-1 text-sm">
-              {recentGroups.map((g) => {
-                const maxWeight = Math.max(...g.sets.map((s) => s.weight));
-                const volume = totalVolume(g.sets);
-                return (
-                  <li key={g.exercise.id} className="flex justify-between">
-                    <span className="min-w-0 truncate">{g.exercise.name}</span>
-                    <span className="ml-2 shrink-0 text-muted">
-                      最大重量{maxWeight}kg / トータル{fmtKg(volume)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        ) : (
-          <p className="text-sm text-muted">まだ記録がありません</p>
         )}
       </section>
 
