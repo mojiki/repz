@@ -44,17 +44,33 @@ export default function HelpPage() {
       </section>
 
       <section className="card space-y-2">
-        <h2 className="font-bold">前回・過去を見る</h2>
+        <h2 className="font-bold">今日トレ・直近トレ</h2>
+        <p className="text-sm text-muted">
+          トップ画面は上から<b>今日トレ → 直近トレ → 週間ボリューム → 体重</b>の順。
+        </p>
         <ul className="space-y-2 text-sm">
           <li>
-            <span className="font-bold">直近トレ</span> … 前回のトレーニング日の詳細へ。
-            種目ごとのセット・ボリューム・推定1RM。ここから編集・削除もできる。
+            <span className="font-bold">今日トレ</span> … 今日の記録を1件でも保存すると
+            先頭に表示される（何も記録していない間は非表示）。
           </li>
           <li>
-            <span className="font-bold">週間ボリューム</span> … ボリューム＝重量 ×
-            回数の合計。週は月曜始まり。「今週 vs 前週」の増減%を表示。種目名をタップすると重量推移グラフ。
+            <span className="font-bold">直近トレ</span> … 今日より前で最後にトレーニングした日の詳細へ。
+            ここから編集・削除もできる。
+          </li>
+          <li>
+            どちらも、日付とその日の<b>トータルボリューム</b>、種目ごとの
+            <b>最大重量</b>と<b>トータルボリューム</b>（例: 「最大重量60kg / トータル1,300kg」）を表示する。
+            セット数や単純な最大値だけだと、セットごとに重量・回数が違うと実態と合わないため。
           </li>
         </ul>
+      </section>
+
+      <section className="card space-y-2">
+        <h2 className="font-bold">週間ボリューム</h2>
+        <p className="text-sm text-muted">
+          ボリューム＝重量 × 回数の合計。週は月曜始まり。「今週 vs 前週」の増減%を表示。
+          種目名をタップすると重量推移グラフ。
+        </p>
       </section>
 
       <section className="card space-y-2">
