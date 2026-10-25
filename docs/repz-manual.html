@@ -297,7 +297,7 @@
 <div class="hero">
   <div class="wrap">
     <h1>ジムでスマホから記録する、<br>1人用の筋トレ記録アプリ</h1>
-    <p>前回との比較・週間ボリューム・体重推移に絞った個人ツール。この文書は使い方と、後から自分が困らないための運用メモをまとめたもの。</p>
+    <p>前回との比較・週間ボリューム・体重推移に絞った個人ツール。この文書は使い方と、後から自分が困らないための運用メモをまとめたもの。仕様・設計・変更履歴は README.md（仕様書）にある。</p>
     <div class="meta">
       <span><b>公開先</b> Vercel（Basic認証）</span>
       <span><b>データ</b> Turso（libSQL）</span>
@@ -570,7 +570,7 @@
     </ol>
 
     <h3>表示速度（リージョン）</h3>
-    <p>画面表示の時間は「DB への直列の往復回数 × Vercel と DB の距離」でほぼ決まる。<strong>Vercel の Function Region は Turso と同じ地域</strong>に合わせる（Settings → Functions。変更後は再デプロイが必要）。現状は Turso が AWS 東京（ap-northeast-1）、Vercel が大阪（kix1）。東京（hnd1）にすると DB への往復がさらに短くなる。Hobby は1リージョンまで。</p>
+    <p>画面表示の時間は「DB への直列の往復回数 × Vercel と DB の距離」でほぼ決まる。<strong>Vercel の Function Region は Turso と同じ地域</strong>に合わせる（Settings → Functions。変更後は再デプロイが必要）。現状は Turso が AWS 東京（ap-northeast-1）、Vercel が東京（hnd1）で揃っている（2026-10-25 に大阪 kix1 から変更）。Hobby は1リージョンまで。</p>
 
     <h3>バックアップ</h3>
     <p>Turso 無料プランに自動バックアップは無い。<strong>月1回、設定画面から CSV を2種類ダウンロードして保存</strong>する運用にしておくと安全。</p>

@@ -1,5 +1,5 @@
 // Repz - 筋トレ記録アプリ
-// データモデル定義 (設計ドキュメント 3章)
+// データモデル定義 (README.md「5. データモデル」参照)
 
 generator client {
   provider = "prisma-client"
