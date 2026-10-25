@@ -12,7 +12,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 文書リビジョン | **Rev.13** |
+| 文書リビジョン | **Rev.14** |
 | 最終更新 | 2026-10-25 |
 | 対応するコード | `main` ブランチ（Rev.13 のコミット時点） |
 | 本番 | Vercel（Hobby）`myapp21/repz`、DB は Turso（AWS 東京） |
@@ -33,6 +33,9 @@
 3. DB スキーマを変えたら、§5.4 のマイグレーション履歴にも追記する。
 4. 運用上の変更（アカウント・リージョン・環境変数など）もコード変更と同様に履歴へ残す。
 5. `docs/repz-manual.html` に影響する変更は、あわせてマニュアルも直して Artifact を再公開する。
+6. **図（Mermaid）も仕様の一部**。該当する章の仕様を変えたら、図も一緒に直す（図の一覧は本文中の `mermaid` ブロック）。
+
+> **図の表示**: 図は Mermaid で書いてあり、GitHub 上ではそのまま描画される。VS Code のプレビューで見る場合は拡張機能「Markdown Preview Mermaid Support」が必要。
 
 ## 目次
 
@@ -127,23 +130,27 @@
 
 ### 3.1 論理構成
 
-```
-[スマホブラウザ]
-      │ HTTPS
-      ▼
-[proxy.ts]  Basic 認証ゲート（BASIC_AUTH_* が設定されている時だけ有効）
-      │ 通過
-      ▼
-[Next.js アプリ  @ Vercel (hnd1)]
-   ├─ Server Components … 画面を描画（全画面 force-dynamic。/help のみ静的）
-   ├─ Server Actions    … 書き込み（app/actions.ts）。revalidatePath → redirect
-   └─ Route Handler     … /api/export（CSV）
-      │ Prisma Client（遅延初期化）
-      ▼
-[@prisma/adapter-libsql → @libsql/client]
-      │
-      ├─ 開発: file:./prisma/dev.db
-      └─ 本番: libsql://…turso.io（認証トークン付き）  @ Turso（AWS 東京）
+```mermaid
+flowchart TD
+    B["スマホブラウザ"] -->|HTTPS| P["proxy.ts<br/>Basic 認証ゲート<br/>(BASIC_AUTH_* が設定されている時だけ有効)"]
+    P -->|通過| N
+    subgraph V["Vercel (Function Region: 東京 hnd1)"]
+        N["Next.js アプリ"]
+        SC["Server Components<br/>画面を描画 (force-dynamic。/help のみ静的)"]
+        SA["Server Actions<br/>app/actions.ts (書き込み)"]
+        RH["Route Handler<br/>/api/export (CSV)"]
+        PR["Prisma Client<br/>(遅延初期化 Proxy)"]
+        AD["@prisma/adapter-libsql<br/>@libsql/client"]
+        N --> SC
+        N --> SA
+        N --> RH
+        SC --> PR
+        SA --> PR
+        RH --> PR
+        PR --> AD
+    end
+    AD -->|開発| F[("SQLite ファイル<br/>prisma/dev.db")]
+    AD -->|"本番 (libsql:// + 認証トークン)"| T[("Turso (libSQL)<br/>AWS ap-northeast-1 東京")]
 ```
 
 専用の API サーバーは無い。ブラウザから DB へ直接つながる経路も無い。
@@ -156,6 +163,44 @@
 | 更新（画面に残る） | クライアントコンポーネントが Server Action を呼ぶ → DB 更新 → `revalidatePath("/", "layout")` → **アクション応答に再描画済みの現在画面が含まれる**（`router.refresh()` 不要） |
 | 更新（別画面へ） | Server Action → DB 更新 → `revalidatePath` → `redirect(遷移先)` → 応答に遷移先の描画が含まれる（1リクエストで完結） |
 | CSV | `GET /api/export` → Route Handler が Prisma で読み出して CSV を返す |
+
+**画面の表示（読み取り）**
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as ブラウザ
+    participant X as proxy.ts
+    participant S as Next.js (Server Component)
+    participant D as DB (Turso)
+    U->>X: GET /record/exercise/1
+    X->>S: 認証 OK
+    S-->>U: シェルとスケルトン (loading.tsx) を先に返す<br/>最初のバイトは約 5ms
+    Note over S,D: 互いに依存しないクエリは Promise.all で同時に投げる
+    S->>D: 種目 / セッション / 前回の最後のセット / 自己ベスト (1回目)
+    D-->>S: 結果
+    S->>D: 前回のセット一覧と日付 (2回目)
+    D-->>S: 結果
+    S-->>U: 本体をストリーミングで差し替える
+```
+
+**更新（保存）**
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as セット入力画面 (クライアント)
+    participant A as Server Action saveSets
+    participant D as DB
+    U->>A: saveSets(日付, 種目, 行, メモ, 遷移先)
+    A->>D: セッションを upsert (メモも同時に更新)
+    A->>D: BEGIN → DELETE (その日のその種目) → INSERT → COMMIT
+    Note over A: revalidatePath を呼び、<br/>クライアントのキャッシュを破棄する
+    A->>A: redirect(safePath(遷移先))
+    A->>D: 遷移先の画面データを取得 (Top など)
+    A-->>U: 1回の応答に「遷移先の描画」が含まれる
+    Note over U: router.push / router.refresh は不要
+```
 
 ### 3.3 環境変数
 
@@ -250,6 +295,31 @@ repz/
    ├─ ExerciseAdmin.tsx           種目の追加・改名・並び替え・削除
    ├─ TemplateSection.tsx / TemplateEditor.tsx
    └─ Chart.tsx                   Recharts の折れ線ラッパー
+```
+
+**モジュールの依存の向き**（`lib/calc.ts` などの純粋関数は、クライアントからも使うので **prisma を import しない**）
+
+```mermaid
+flowchart LR
+    PG["app/**/page.tsx<br/>Server Components"]
+    CL["クライアントコンポーネント<br/>SetInputForm / ExerciseAdmin ほか"]
+    SV["サーバー側の部品<br/>DayTrainingCard / VolumeProgress ほか"]
+    ACT["app/actions.ts<br/>(use server)"]
+    Q["lib/queries.ts"]
+    PRI["lib/prisma.ts"]
+    ENV["lib/db-env.ts"]
+    PURE["lib/calc.ts / format.ts / date.ts<br/>純粋関数。prisma を import しない"]
+    PG --> Q
+    PG --> SV
+    PG --> CL
+    CL -->|Server Action を呼ぶ| ACT
+    Q --> PRI
+    ACT --> PRI
+    PRI --> ENV
+    PG --> PURE
+    SV --> PURE
+    CL --> PURE
+    Q --> PURE
 ```
 
 ### 4.1 設定ファイルの現物
@@ -364,12 +434,53 @@ export const prisma = new Proxy({} as PrismaClient, {
 
 ### 5.1 ER 図
 
-```
-exercises 1───* sets *───1 workout_sessions
-    │
-    └──1───* menu_template_exercises *───1 menu_templates
-
-body_weights（独立）
+```mermaid
+erDiagram
+    exercises ||--o{ sets : "種目ごとのセット"
+    workout_sessions ||--o{ sets : "1日ぶんのセット"
+    exercises ||--o{ menu_template_exercises : "テンプレートに含まれる"
+    menu_templates ||--o{ menu_template_exercises : "種目の並び"
+    exercises {
+        int id PK
+        string category "大分類"
+        string name "大分類内で一意"
+        int sort_order "表示順"
+        datetime created_at
+    }
+    workout_sessions {
+        int id PK
+        datetime date UK "1日1件 (UTC 0時)"
+        string memo "null 可"
+        datetime created_at
+        datetime updated_at
+    }
+    sets {
+        int id PK
+        int session_id FK
+        int exercise_id FK
+        int set_number "種目ごとの連番"
+        float weight "kg"
+        int reps
+        datetime created_at
+        datetime updated_at
+    }
+    body_weights {
+        int id PK
+        datetime date UK "同日は上書き"
+        float weight "kg"
+        datetime created_at
+    }
+    menu_templates {
+        int id PK
+        string name
+        datetime created_at
+    }
+    menu_template_exercises {
+        int id PK
+        int menu_template_id FK
+        int exercise_id FK
+        int sort_order
+    }
 ```
 
 - `sets.session_id` / `sets.exercise_id` / `menu_template_exercises.*` はすべて **ON DELETE CASCADE**。
@@ -488,6 +599,23 @@ model MenuTemplateExercise {
 | `menu_templates` | テンプレート | `name` |
 | `menu_template_exercises` | テンプレートの種目 | `menu_template_id`、`exercise_id`、`sort_order`（テンプレート内の並び順） |
 
+**セッション（`workout_sessions`）のライフサイクル**
+
+```mermaid
+stateDiagram-v2
+    state "セッション無し" as none
+    state "セッション有り" as exists
+    [*] --> none
+    none --> exists : saveSets またはメモ保存 (upsert)
+    exists --> exists : 種目の保存 (置き換え) / メモ変更
+    exists --> none : セッション削除
+    exists --> none : 有効行 0 件・メモ無し・セット無し (自動で掃除)
+    note right of exists
+        種目を個別に全削除しても
+        空のセッションは残る (既知の制約 16.2)
+    end note
+```
+
 ### 5.4 マイグレーション履歴
 
 | ディレクトリ | 内容 |
@@ -556,6 +684,15 @@ estimate1RM(weight, reps) =
 - 初期値の決め方: ① その日にすでに保存したセットがあればそれ → ② 無ければ前回のセットをコピー → ③ どちらも無ければ `{weight: 20, reps: 10}` の1行。
 - 「＋ セット追加」は、前回の同じセット番号 → 無ければ現在の最後の行 → 無ければ `{20, 10}` をコピーして追加。
 
+```mermaid
+flowchart TD
+    A["セット入力画面を開く"] --> B{"その日のその種目の<br/>保存済みセットがある?"}
+    B -->|ある| C["保存済みの行を表示して編集"]
+    B -->|ない| D{"前回 (その種目を最後にやった日)<br/>のセットがある?"}
+    D -->|ある| E["前回のセットをコピーして表示"]
+    D -->|ない| F["20kg × 10回 の1行を表示"]
+```
+
 ### 6.6 前回比（プログレッシブオーバーロード）
 
 ```ts
@@ -582,6 +719,24 @@ compareVolume(current, previous) = {
 - バーの幅 = `min(100, round(ratio × 100))%`。差の表示は `fmtKgPrecise`（小数1桁まで。例 `2.5kg`、`80kg`）。
 - セット入力画面は `→ ` を頭に付ける（例 `この種目 前回1,300kg（10/15(木)） → あと 80kg`）。
 
+**種目ごとの判定の流れ**
+
+```mermaid
+flowchart TD
+    S["今日やった種目"] --> Q{"前回の記録がある?"}
+    Q -->|ない| F["「初回」と表示<br/>合計の比較から除く"]
+    Q -->|ある| V{"前回のボリュームは 0 より大きい?"}
+    V -->|"0kg (自重)"| N["差は表示しない<br/>合計の比較から除く"]
+    V -->|はい| C["diff = 今日 − 前回 (小数1桁に丸め)"]
+    C --> K{"diff の符号"}
+    K -->|"正"| G["▲ +◯kg 前回超え (緑)"]
+    K -->|"0"| E["前回と同じ"]
+    K -->|"負"| H["あと ◯kg (水色。赤にしない)"]
+    G --> T["比較できる種目だけ合計して<br/>「同種目の前回比」と進捗バーを表示"]
+    E --> T
+    H --> T
+```
+
 ### 6.7 大分類の並び順
 
 `["胸","背中","脚","肩","腕","その他"]` の順。DB にあるそれ以外の大分類は名前順で末尾。
@@ -595,6 +750,39 @@ compareVolume(current, previous) = {
 ## 7. 画面仕様
 
 全画面 `export const dynamic = "force-dynamic"`（`/help` を除く）。Next 16 の動的ルートは `params` / `searchParams` が **Promise**（`await` する）。型は `PageProps<"/route">` / `LayoutProps<"/">`（`next build` が生成するルート型。`tsc` 単体では未生成の間エラーになる）。
+
+**画面遷移図**
+
+記録の流れ:
+
+```mermaid
+flowchart LR
+    TOP["Top"] -->|"＋記録する"| REC["/record<br/>大分類・テンプレート選択"]
+    REC -->|大分類| CAT["/record/[category]<br/>種目選択"]
+    REC -->|テンプレート| TPL["/record/template/[id]<br/>テンプレートの種目"]
+    CAT --> EX["/record/exercise/[id]<br/>セット入力"]
+    TPL --> EX
+    EX -->|"保存 (今日の記録)"| TOP
+    EX -->|"保存 (過去日の編集)"| SES["/session/[date]<br/>セッション詳細・編集"]
+    TOP -->|"直近トレ / 全部見る"| SES
+    SES -->|"編集 / この日に種目を追加"| EX
+    SES -->|セッション削除| TOP
+```
+
+その他の画面:
+
+```mermaid
+flowchart LR
+    ANY["Top 以外のどのページでも"] -->|"下部の ← Topに戻る"| TOP["Top"]
+    TOP -->|"詳細 (今週のボリューム)"| VOL["/volume<br/>週間ボリューム"]
+    VOL -->|種目名| EH["/exercise/[id]<br/>種目別グラフ"]
+    EH -->|"この種目を記録する"| EX["/record/exercise/[id]<br/>セット入力"]
+    TOP -->|体重| BW["/body-weight<br/>体重"]
+    TOP -->|"ヘッダー: 設定"| SET["/settings<br/>種目・テンプレート・CSV"]
+    SET -->|テンプレート編集| TE["/settings/templates/[id]<br/>テンプレート編集"]
+    SET -->|CSV| API["/api/export<br/>CSV"]
+    TOP -->|"ヘッダー: 使い方"| HELP["/help<br/>使い方"]
+```
 
 ### 7.0 共通
 
@@ -731,6 +919,22 @@ compareVolume(current, previous) = {
 | `deleteTemplate` | `id` | 削除 → `redirect("/settings")` |
 | `setTemplateExercises` | `templateId, exerciseIds[]` | 全置換（`sortOrder` = 配列の添字）をトランザクションで |
 
+**`saveSets` の処理フロー**
+
+```mermaid
+flowchart TD
+    A["saveSets(日付, 種目, 行, メモ, 遷移先)"] --> B["セッションを upsert<br/>メモ: undefined なら触らない / 空文字なら消去"]
+    B --> C["有効な行だけ残す (有限値かつ reps が 1 以上)<br/>setNumber を 1 から採番"]
+    C --> D["トランザクション<br/>その日のその種目を DELETE して、行を INSERT"]
+    D --> E{"有効行が 0 件で、メモも無い?"}
+    E -->|はい| F{"セッションにセットが残っている?"}
+    F -->|いいえ| G["セッションを削除"]
+    F -->|はい| H
+    E -->|いいえ| H["revalidatePath で<br/>クライアントのキャッシュを破棄"]
+    G --> H
+    H --> I["redirect(safePath(遷移先))"]
+```
+
 **Route Handler**: `GET /api/export`（§7.9）。
 
 ---
@@ -775,6 +979,32 @@ compareVolume(current, previous) = {
 | `/record/exercise/[id]` | 2 |
 | `/help` | 0（静的） |
 
+**例: セット入力画面のクエリ（変更前 → 変更後）**
+
+変更前（直列 5 往復）:
+
+```mermaid
+flowchart LR
+    s1["① 種目"] --> s2["② セッション<br/>前回の最後のセット"] --> s3["③ セッションのセット<br/>前回の日付"] --> s4["④ 種目の紐付け<br/>前回のセット一覧"] --> s5["⑤ 自己ベスト"]
+```
+
+変更後（直列 2 往復。同じ箱の中は同時に実行）:
+
+```mermaid
+flowchart LR
+    subgraph W1["1回目 (同時に実行)"]
+        a1["種目"]
+        a2["当日のセッション・セット<br/>種目マップ"]
+        a3["前回の最後のセット"]
+        a4["自己ベスト"]
+    end
+    subgraph W2["2回目 (同時に実行)"]
+        b1["前回のセット一覧"]
+        b2["前回の日付"]
+    end
+    W1 --> W2
+```
+
 保存（`saveSets`）は直列 5〜6 回（upsert → BEGIN → DELETE → INSERT → COMMIT →（遷移先の描画））。Prisma の `$transaction([...])` は libsql アダプタ上で BEGIN/各文/COMMIT が別往復になる。リージョンを揃えた現状では差が小さいため、生 SQL の `batch` 化は見送り（§15 D-06）。
 
 ---
@@ -810,6 +1040,19 @@ export const config = {
   // 静的アセットと Next 内部リクエストは除外
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
+```
+
+**判定の流れ**
+
+```mermaid
+flowchart TD
+    R["リクエスト"] --> M{"matcher の対象?<br/>(_next/static, _next/image, favicon 以外)"}
+    M -->|対象外| PASS1["そのまま通す"]
+    M -->|対象| E{"BASIC_AUTH_USER と<br/>BASIC_AUTH_PASSWORD が両方設定されている?"}
+    E -->|いいえ| PASS2["認証なしで通す (ローカル開発)"]
+    E -->|はい| H{"Authorization: Basic が<br/>ID と PW に一致する?"}
+    H -->|一致| OK["NextResponse.next()"]
+    H -->|"不一致または無し"| NG["401 と WWW-Authenticate を返す"]
 ```
 
 - ID/PW は Base64（暗号化ではない）で送られるので **HTTPS 前提**（Vercel は HTTPS）。推測されにくいパスワードにする。
@@ -944,6 +1187,11 @@ npm run build
 
 ### 14.1 初回構築
 
+```mermaid
+flowchart LR
+    S1["① GitHub に push"] --> S2["② Turso で DB を作成<br/>URL とトークンを控える"] --> S3["③ Vercel に Import<br/>環境変数 + Function Region を hnd1"] --> S4["④ ローカルから<br/>npm run db:push-turso"] --> S5["⑤ Deploy / Redeploy"]
+```
+
 1. **GitHub**: 空のリポジトリ（private）を作って push（ブランチ名は `main`。create-next-app は `master` で作ることがある → `git branch -m master main`）。
 2. **Turso**: DB `repz` を作成（グループ `default`、AWS ap-northeast-1 東京）。DB 詳細の **Connect** で URL（`libsql://…turso.io`）、**Create Token** で認証トークンを取得（再表示できないので控える）。
 3. **Vercel**: GitHub のリポジトリを Import。**Settings → Environment Variables** に `DATABASE_URL` / `DATABASE_AUTH_TOKEN` / `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` / `APP_TZ_OFFSET_MINUTES=540`。**Settings → Functions → Function Region を東京 hnd1**（DB と同じ地域。変更後は再デプロイが必要。Hobby は1リージョンまで）。
@@ -973,6 +1221,15 @@ Prisma 7 のスキーマエンジンは `libsql://` に接続できず、`prisma
 
 ### 14.3 日常運用
 
+```mermaid
+flowchart LR
+    DEV["ローカル開発"] -->|git push| GH["GitHub<br/>mojiki/repz (main)"]
+    GH -->|自動| VB["Vercel ビルド<br/>prisma generate → next build<br/>(DB には接続しない)"]
+    VB --> VR["Vercel 本番 (hnd1)"]
+    VR -->|"libsql:// + 認証トークン"| TU[("Turso")]
+    DEV -.->|"スキーマ変更と初期投入だけは別ルート<br/>npm run db:push-turso"| TU
+```
+
 | やること | 手順 |
 |---|---|
 | 画面・ロジックの変更 | `git push` だけ。Vercel が自動ビルド・デプロイ（1〜2分） |
@@ -980,6 +1237,15 @@ Prisma 7 のスキーマエンジンは `libsql://` に接続できず、`prisma
 | 環境変数の変更 | Vercel の Settings で変更 → **手動で Redeploy**（自動では反映されない） |
 | バックアップ | **月1回、設定画面から CSV を2種類保存**。Turso 無料プランに自動バックアップは無い |
 | 表示が遅い | Function Region と DB の地域を確認（§9.1、§18.1） |
+
+**スキーマ変更の流れ**
+
+```mermaid
+flowchart TD
+    A["schema.prisma を編集"] --> B["npm run db:migrate<br/>(ローカル SQLite に migration を作成・適用)"]
+    B --> C["環境変数で Turso を指定して<br/>npm run db:push-turso"]
+    C --> D["git push (コード側を反映)"]
+```
 
 ### 14.4 料金
 
@@ -998,6 +1264,28 @@ Prisma 7 のスキーマエンジンは `libsql://` に接続できず、`prisma
 | Vercel | プロジェクト `repz`（スコープ `myapp21`、Hobby）。GitHub は `mojiki/repz` に接続 |
 | Turso | アカウントは **`akanagi2` 名義**（組織 `akanagi2`、グループ `default`）。**`repz` のほか別アプリ「もけけ管理アプリ」の `mokeke` DB も同じアカウントにある** |
 | Function Region | 東京 hnd1 |
+
+```mermaid
+flowchart LR
+    subgraph GH["GitHub"]
+        M["mojiki (残す)<br/>kimonji.monji@gmail.com"]
+        K["akanagi2 (削除予定)"]
+    end
+    REPO["mojiki/repz (private)"]
+    subgraph VC["Vercel (Hobby)"]
+        PRJ["myapp21 / repz<br/>Function Region: 東京 hnd1"]
+    end
+    subgraph TS["Turso (アカウント名: akanagi2)"]
+        DB1[("repz DB")]
+        DB2[("mokeke DB<br/>もけけ管理アプリ")]
+    end
+    M --- REPO
+    REPO -->|Git 連携| PRJ
+    PRJ -->|"DATABASE_URL + 認証トークン"| DB1
+    K -.->|"Turso のログインに使っている可能性 (要確認)"| TS
+    classDef warn fill:#fff3cd,stroke:#d39e00,color:#000
+    class K,DB2 warn
+```
 
 - **GitHub の `akanagi2` を削除する前に、Turso のログイン手段・組織メンバーを移行する**こと。`akanagi2` で Turso にサインインしている場合、削除すると repz と mokeke の両方の管理画面に入れなくなるおそれがある。
 - **Vercel Hobby は「コミット作者のメール = Vercel アカウント本人」でないとデプロイがブロックされる**（"commit author doesn't have permission"）。`git config user.email` を Vercel 連携アカウントのメールに合わせる。名前（`user.name`）は問われない（実際に `mojiki` / `Moji` が混在しているが、メールは同じ）。
@@ -1082,6 +1370,25 @@ Prisma 7 のスキーマエンジンは `libsql://` に接続できず、`prisma
 ## 17. 更新履歴
 
 新しい順。**区分**: 機能／改善／修正／構成／運用／文書。コミットは短縮ハッシュ（日付は作者日）。
+
+```mermaid
+timeline
+    title repz の歩み
+    section 2026年9月
+        09-05 : Rev.1 要件定義
+        09-06 : Rev.2 初期実装 : Rev.3 Turso 対応 : Rev.4 移管 と 遅延初期化 : Rev.5 マニュアル : Rev.6 ヘルプ画面
+        09-12 : Rev.7 Top へ戻る導線
+        09-13 : Rev.8 直近トレ改善
+        09-20 : Rev.9 今日トレ : Rev.10 文書同期
+    section 2026年10月
+        10-25 : Rev.11 速度改善 : Rev.12 前回比 : Rev.13 文書統合 : Rev.14 Mermaid 図
+```
+
+### Rev.14 — 2026-10-25
+
+| 区分 | 内容 | 理由・影響 |
+|---|---|---|
+| 文書 | **Mermaid 図を 19 点追加**: 構成、リクエストの流れ（表示・保存）、モジュール依存、ER、セッションのライフサイクル、前回値の決め方、前回比の判定、画面遷移（2 枚）、`saveSets` のフロー、セット入力のクエリ前後比較（2 枚）、認証の判定、初回構築・デプロイ・スキーマ変更の流れ、アカウント構成、更新履歴のタイムライン。§3.1 と §5.1 の ASCII 図は Mermaid に置き換え | 文章と表だけでは構造や流れが追いにくかった。GitHub 上でそのまま描画される。図の更新も更新ルール（§0.3 の 6）に追加 |
 
 ### Rev.13 — 2026-10-25 · `06714d0`
 
