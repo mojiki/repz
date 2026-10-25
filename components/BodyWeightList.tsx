@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { deleteBodyWeight } from "@/app/actions";
 import { formatShort } from "@/lib/date";
 
@@ -10,7 +9,6 @@ export function BodyWeightList({
 }: {
   rows: { date: string; weight: number }[];
 }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
 
   if (rows.length === 0) {
@@ -46,7 +44,6 @@ export function BodyWeightList({
                     if (!confirm(`${r.date} の記録を削除しますか?`)) return;
                     start(async () => {
                       await deleteBodyWeight(r.date);
-                      router.refresh();
                     });
                   }}
                   className="text-xs text-bad disabled:opacity-40"

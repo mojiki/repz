@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   addExercise,
   deleteExercise,
@@ -19,12 +18,10 @@ export function ExerciseAdmin({
   groups: Group[];
   categories: string[];
 }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<void>) =>
     start(async () => {
       await fn();
-      router.refresh();
     });
 
   const [newCat, setNewCat] = useState(categories[0] ?? "胸");

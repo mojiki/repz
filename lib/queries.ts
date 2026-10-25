@@ -1,8 +1,35 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import type { Exercise } from "@/app/generated/prisma/client";
 import { addDays, dateStrToDate, dateToStr, todayStr, weekStartStr } from "@/lib/date";
 import { estimate1RM } from "@/lib/calc";
 
 export { estimate1RM } from "@/lib/calc";
+
+/*
+ * 設計メモ (レスポンス対策):
+ * DB が遠いと「直列に待つクエリの段数」がそのまま表示までの時間になる。
+ * SQLite では Prisma の include / リレーション select が別クエリ (=直列) に
+ * 分解されるため使わず、フラットなクエリを Promise.all で並列に投げて
+ * 種目 (38行程度) とのひも付けだけ JS 側で行う。
+ */
+
+/** 種目マスタ全件を id で引けるようにしたもの (1リクエスト内ではキャッシュ) */
+const getExerciseMap = cache(async () => {
+  const all = await prisma.exercise.findMany();
+  return new Map<number, Exercise>(all.map((e) => [e.id, e]));
+});
+
+/** セットに種目情報を付ける (種目が消えていたセットは除外) */
+function attachExercise<T extends { exerciseId: number }>(
+  sets: T[],
+  exMap: Map<number, Exercise>,
+): (T & { exercise: Exercise })[] {
+  return sets.flatMap((s) => {
+    const exercise = exMap.get(s.exerciseId);
+    return exercise ? [{ ...s, exercise }] : [];
+  });
+}
 
 /** 大分類の正規順。DB 上のその他カテゴリは末尾に付ける。 */
 const CATEGORY_ORDER = ["胸", "背中", "脚", "肩", "腕", "その他"];
@@ -13,22 +40,20 @@ export function orderCategories(cats: string[]): string[] {
   return [...known, ...extra];
 }
 
-export async function getCategories(): Promise<string[]> {
-  const rows = await prisma.exercise.findMany({
-    distinct: ["category"],
-    select: { category: true },
-  });
-  return orderCategories(rows.map((r) => r.category));
-}
-
-export async function getCategoriesWithCounts() {
-  const cats = await getCategories();
+async function categoryCounts() {
   const grouped = await prisma.exercise.groupBy({
     by: ["category"],
     _count: { _all: true },
   });
-  const map = new Map(grouped.map((g) => [g.category, g._count._all]));
-  return cats.map((c) => ({ category: c, count: map.get(c) ?? 0 }));
+  return new Map(grouped.map((g) => [g.category, g._count._all]));
+}
+
+export async function getCategoriesWithCounts() {
+  const counts = await categoryCounts();
+  return orderCategories([...counts.keys()]).map((category) => ({
+    category,
+    count: counts.get(category) ?? 0,
+  }));
 }
 
 export async function getExercisesByCategory(category: string) {
@@ -53,24 +78,19 @@ export async function getExercise(id: number) {
   return prisma.exercise.findUnique({ where: { id } });
 }
 
-/** 指定日のセッション(なければ null) */
+/** 指定日のセッション(なければ null)。sets には exercise が付く。 */
 export async function getSessionByDate(dateStr: string) {
-  return prisma.workoutSession.findUnique({
-    where: { date: dateStrToDate(dateStr) },
-    include: {
-      sets: {
-        include: { exercise: true },
-        orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }],
-      },
-    },
-  });
-}
-
-export async function getOrCreateSession(dateStr: string) {
   const date = dateStrToDate(dateStr);
-  const existing = await prisma.workoutSession.findUnique({ where: { date } });
-  if (existing) return existing;
-  return prisma.workoutSession.create({ data: { date } });
+  const [session, sets, exMap] = await Promise.all([
+    prisma.workoutSession.findUnique({ where: { date } }),
+    prisma.set.findMany({
+      where: { session: { date } },
+      orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }],
+    }),
+    getExerciseMap(),
+  ]);
+  if (!session) return null;
+  return { ...session, sets: attachExercise(sets, exMap) };
 }
 
 /** セット配列を種目ごとにまとめる */
@@ -91,16 +111,19 @@ export function groupSetsByExercise<
 
 /** 直近(今日を除く最新)のセッション */
 export async function getRecentSession(beforeDateStr: string) {
-  return prisma.workoutSession.findFirst({
-    where: { date: { lt: dateStrToDate(beforeDateStr) } },
-    orderBy: { date: "desc" },
-    include: {
-      sets: {
-        include: { exercise: true },
-        orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }],
-      },
-    },
+  const [session, exMap] = await Promise.all([
+    prisma.workoutSession.findFirst({
+      where: { date: { lt: dateStrToDate(beforeDateStr) } },
+      orderBy: { date: "desc" },
+    }),
+    getExerciseMap(),
+  ]);
+  if (!session) return null;
+  const sets = await prisma.set.findMany({
+    where: { sessionId: session.id },
+    orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }],
   });
+  return { ...session, sets: attachExercise(sets, exMap) };
 }
 
 /**
@@ -111,22 +134,35 @@ export async function getPreviousSetsForExercise(exerciseId: number, beforeDateS
   const lastSet = await prisma.set.findFirst({
     where: { exerciseId, session: { date: { lt: dateStrToDate(beforeDateStr) } } },
     orderBy: { session: { date: "desc" } },
-    select: { sessionId: true, session: { select: { date: true } } },
+    select: { sessionId: true },
   });
   if (!lastSet) return null;
-  const sets = await prisma.set.findMany({
-    where: { exerciseId, sessionId: lastSet.sessionId },
-    orderBy: { setNumber: "asc" },
-  });
-  return { date: dateToStr(lastSet.session.date), sets };
+  const [sets, session] = await Promise.all([
+    prisma.set.findMany({
+      where: { exerciseId, sessionId: lastSet.sessionId },
+      orderBy: { setNumber: "asc" },
+    }),
+    prisma.workoutSession.findUnique({
+      where: { id: lastSet.sessionId },
+      select: { date: true },
+    }),
+  ]);
+  return { date: dateToStr(session!.date), sets };
 }
 
 /**
- * 種目の自己ベスト(推定1RM最大)を返す。除外セットIDを指定可能。
+ * 種目の自己ベスト(推定1RM最大)を返す。
+ * excludeDateStr を渡すと、その日のセッションのセットは除いて集計する
+ * (入力中の日の記録を「過去のベスト」に含めないため)。
  */
-export async function getExercisePR(exerciseId: number, excludeSetIds: number[] = []) {
+export async function getExercisePR(exerciseId: number, excludeDateStr?: string) {
   const sets = await prisma.set.findMany({
-    where: { exerciseId, id: { notIn: excludeSetIds.length ? excludeSetIds : [-1] } },
+    where: {
+      exerciseId,
+      ...(excludeDateStr
+        ? { session: { date: { not: dateStrToDate(excludeDateStr) } } }
+        : {}),
+    },
     select: { weight: true, reps: true },
   });
   let best = 0;
@@ -147,16 +183,21 @@ export type WeeklyVolumeRow = {
   sets: number;
 };
 
-async function volumeRowsForRange(startStr: string, endStr: string) {
-  const sets = await prisma.set.findMany({
+function setsInRange(startStr: string, endStr: string) {
+  return prisma.set.findMany({
     where: {
       session: { date: { gte: dateStrToDate(startStr), lt: dateStrToDate(endStr) } },
     },
-    include: { exercise: { select: { id: true, name: true, category: true } } },
   });
+}
+
+function summarizeVolume(
+  sets: { exerciseId: number; weight: number; reps: number }[],
+  exMap: Map<number, Exercise>,
+) {
   const map = new Map<number, WeeklyVolumeRow>();
   let total = 0;
-  for (const s of sets) {
+  for (const s of attachExercise(sets, exMap)) {
     const v = s.weight * s.reps;
     total += v;
     const row = map.get(s.exerciseId) ?? {
@@ -180,10 +221,13 @@ export async function getWeeklyVolume(refDateStr: string = todayStr()) {
   const thisEnd = addDays(thisStart, 7);
   const lastStart = addDays(thisStart, -7);
 
-  const [thisWeek, lastWeek] = await Promise.all([
-    volumeRowsForRange(thisStart, thisEnd),
-    volumeRowsForRange(lastStart, thisStart),
+  const [thisSets, lastSets, exMap] = await Promise.all([
+    setsInRange(thisStart, thisEnd),
+    setsInRange(lastStart, thisStart),
+    getExerciseMap(),
   ]);
+  const thisWeek = summarizeVolume(thisSets, exMap);
+  const lastWeek = summarizeVolume(lastSets, exMap);
 
   const diffPct =
     lastWeek.total > 0
@@ -201,19 +245,28 @@ export async function getWeeklyVolume(refDateStr: string = todayStr()) {
 
 /** 種目の MAX重量 / 推定1RM の日次推移 */
 export async function getExerciseHistory(exerciseId: number) {
-  const sets = await prisma.set.findMany({
-    where: { exerciseId },
-    include: { session: { select: { date: true } } },
-    orderBy: { session: { date: "asc" } },
-  });
+  const [sets, sessions] = await Promise.all([
+    prisma.set.findMany({ where: { exerciseId } }),
+    prisma.workoutSession.findMany({
+      where: { sets: { some: { exerciseId } } },
+      select: { id: true, date: true },
+    }),
+  ]);
+  const dateById = new Map(sessions.map((s) => [s.id, dateToStr(s.date)]));
+  const dated = sets
+    .flatMap((s) => {
+      const date = dateById.get(s.sessionId);
+      return date ? [{ ...s, date }] : [];
+    })
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
   const byDate = new Map<string, { maxWeight: number; best1RM: number; volume: number }>();
-  for (const s of sets) {
-    const d = dateToStr(s.session.date);
-    const cur = byDate.get(d) ?? { maxWeight: 0, best1RM: 0, volume: 0 };
+  for (const s of dated) {
+    const cur = byDate.get(s.date) ?? { maxWeight: 0, best1RM: 0, volume: 0 };
     cur.maxWeight = Math.max(cur.maxWeight, s.weight);
     cur.best1RM = Math.max(cur.best1RM, estimate1RM(s.weight, s.reps));
     cur.volume += s.weight * s.reps;
-    byDate.set(d, cur);
+    byDate.set(s.date, cur);
   }
   return [...byDate.entries()].map(([date, v]) => ({
     date,
@@ -228,23 +281,32 @@ export async function getBodyWeights() {
   return rows.map((r) => ({ date: dateToStr(r.date), weight: r.weight }));
 }
 
+function withExercises<
+  T extends { id: number },
+  L extends { menuTemplateId: number; exerciseId: number },
+>(template: T, links: L[], exMap: Map<number, Exercise>) {
+  const mine = links.filter((l) => l.menuTemplateId === template.id);
+  return { ...template, exercises: attachExercise(mine, exMap) };
+}
+
 export async function getTemplates() {
-  return prisma.menuTemplate.findMany({
-    orderBy: { createdAt: "asc" },
-    include: {
-      exercises: {
-        orderBy: { sortOrder: "asc" },
-        include: { exercise: true },
-      },
-    },
-  });
+  const [templates, links, exMap] = await Promise.all([
+    prisma.menuTemplate.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.menuTemplateExercise.findMany({ orderBy: { sortOrder: "asc" } }),
+    getExerciseMap(),
+  ]);
+  return templates.map((t) => withExercises(t, links, exMap));
 }
 
 export async function getTemplate(id: number) {
-  return prisma.menuTemplate.findUnique({
-    where: { id },
-    include: {
-      exercises: { orderBy: { sortOrder: "asc" }, include: { exercise: true } },
-    },
-  });
+  const [template, links, exMap] = await Promise.all([
+    prisma.menuTemplate.findUnique({ where: { id } }),
+    prisma.menuTemplateExercise.findMany({
+      where: { menuTemplateId: id },
+      orderBy: { sortOrder: "asc" },
+    }),
+    getExerciseMap(),
+  ]);
+  if (!template) return null;
+  return withExercises(template, links, exMap);
 }

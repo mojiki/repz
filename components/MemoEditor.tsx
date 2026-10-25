@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { updateSessionMemo } from "@/app/actions";
 
 export function MemoEditor({
@@ -11,7 +10,6 @@ export function MemoEditor({
   dateStr: string;
   initialMemo: string;
 }) {
-  const router = useRouter();
   const [memo, setMemo] = useState(initialMemo);
   const [pending, start] = useTransition();
   const dirty = memo.trim() !== initialMemo.trim();
@@ -31,7 +29,6 @@ export function MemoEditor({
         onClick={() =>
           start(async () => {
             await updateSessionMemo(dateStr, memo);
-            router.refresh();
           })
         }
         className="btn btn-sm disabled:opacity-40"

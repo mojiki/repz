@@ -1,8 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { saveSets, updateSessionMemo, type SetRow } from "@/app/actions";
+import { saveSets, type SetRow } from "@/app/actions";
 import { estimate1RM } from "@/lib/calc";
 
 type Props = {
@@ -26,7 +25,6 @@ export function SetInputForm({
   initialMemo,
   backHref,
 }: Props) {
-  const router = useRouter();
   const [pending, start] = useTransition();
 
   const seed = (): SetRow[] => {
@@ -53,13 +51,10 @@ export function SetInputForm({
   };
 
   const save = () => {
+    const memoChanged = memo.trim() !== initialMemo.trim();
+    // 保存 → 遷移はサーバーアクション内の redirect で1往復にまとめている
     start(async () => {
-      await saveSets(dateStr, exerciseId, rows);
-      if (memo.trim() !== initialMemo.trim()) {
-        await updateSessionMemo(dateStr, memo);
-      }
-      router.push(backHref);
-      router.refresh();
+      await saveSets(dateStr, exerciseId, rows, memoChanged ? memo : undefined, backHref);
     });
   };
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { renameTemplate, setTemplateExercises } from "@/app/actions";
 
 type Ex = { id: number; name: string };
@@ -18,7 +17,6 @@ export function TemplateEditor({
   selectedIds: number[];
   groups: Group[];
 }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [name, setName] = useState(initialName);
   const [selected, setSelected] = useState<number[]>(initialSelected);
@@ -34,7 +32,6 @@ export function TemplateEditor({
     setSelected(ids);
     start(async () => {
       await setTemplateExercises(templateId, ids);
-      router.refresh();
     });
   };
 
@@ -61,7 +58,6 @@ export function TemplateEditor({
             name.trim() !== initialName &&
             start(async () => {
               await renameTemplate(templateId, name);
-              router.refresh();
             })
           }
         />

@@ -302,7 +302,7 @@
       <span><b>公開先</b> Vercel（Basic認証）</span>
       <span><b>データ</b> Turso（libSQL）</span>
       <span><b>ソース</b> github.com/mojiki/repz</span>
-      <span><b>最終更新</b> 2026-09-20</span>
+      <span><b>最終更新</b> 2026-10-25</span>
     </div>
   </div>
 </div>
@@ -569,6 +569,9 @@
       <li>同ページの「Create Token」で認証トークンを発行（画面を離れると再表示できないのでその場でコピー）。</li>
     </ol>
 
+    <h3>表示速度（リージョン）</h3>
+    <p>画面表示の時間は「DB への直列の往復回数 × Vercel と DB の距離」でほぼ決まる。<strong>Vercel の Function Region は Turso と同じ地域</strong>に合わせる（Settings → Functions。変更後は再デプロイが必要）。現状は Turso が AWS 東京（ap-northeast-1）、Vercel が大阪（kix1）。東京（hnd1）にすると DB への往復がさらに短くなる。Hobby は1リージョンまで。</p>
+
     <h3>バックアップ</h3>
     <p>Turso 無料プランに自動バックアップは無い。<strong>月1回、設定画面から CSV を2種類ダウンロードして保存</strong>する運用にしておくと安全。</p>
   </div>
@@ -633,6 +636,10 @@
           <tr>
             <td>Vercel:<br><span class="mono">commit author doesn't have permission</span></td>
             <td>コミットの author メールが Vercel アカウントと不一致（Hobby の制限）。<code>git config user.email</code> を合わせて <code>git commit --amend --reset-author</code> → <code>git push --force</code>。</td>
+          </tr>
+          <tr>
+            <td>画面遷移が遅い</td>
+            <td>Vercel の Function Region が Turso と離れている可能性が高い。Settings → Functions で DB と同じ地域（東京 hnd1 など）にして再デプロイ。「使い方」画面だけ速くて他が遅いなら DB との距離が原因。</td>
           </tr>
           <tr>
             <td>グラフが表示されない</td>

@@ -4,10 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dateStrToDate } from "@/lib/date";
-import { getOrCreateSession } from "@/lib/queries";
 
+/** クライアントの Router Cache を破棄する (戻る操作で古い画面が出ないように) */
 function revalidateAll() {
   revalidatePath("/", "layout");
+}
+
+/** 遷移先として許せるのはアプリ内の絶対パスだけ (//host や \ 始まりは不可) */
+function safePath(p: string): string {
+  return /^\/(?![/\\])/.test(p) ? p : "/";
 }
 
 /* ------------------------------------------------------------------ */
@@ -16,13 +21,28 @@ function revalidateAll() {
 
 export type SetRow = { weight: number; reps: number };
 
-/** 指定日・指定種目のセットを丸ごと置き換える */
+/**
+ * 指定日・指定種目のセットを丸ごと置き換え、redirectTo へ遷移する。
+ * メモが変わっていれば memo も同じ呼び出しで保存する (undefined なら触らない)。
+ *
+ * 遷移もサーバー側 redirect で行う: クライアントで router.push / refresh すると
+ * 「遷移前の画面の再描画 + 遷移先の取得 + さらに refresh」と往復が増えるため。
+ */
 export async function saveSets(
   dateStr: string,
   exerciseId: number,
   rows: SetRow[],
+  memo: string | undefined,
+  redirectTo: string,
 ) {
-  const session = await getOrCreateSession(dateStr);
+  const date = dateStrToDate(dateStr);
+  const nextMemo = memo === undefined ? undefined : memo.trim() || null;
+  const session = await prisma.workoutSession.upsert({
+    where: { date },
+    create: { date, memo: nextMemo ?? null },
+    update: nextMemo === undefined ? {} : { memo: nextMemo },
+  });
+
   const clean = rows
     .filter((r) => Number.isFinite(r.weight) && Number.isFinite(r.reps) && r.reps > 0)
     .map((r, i) => ({
@@ -38,13 +58,16 @@ export async function saveSets(
     ...(clean.length ? [prisma.set.createMany({ data: clean })] : []),
   ]);
 
-  // セットが1つも残らないセッションは掃除
-  const remaining = await prisma.set.count({ where: { sessionId: session.id } });
-  if (remaining === 0 && !session.memo) {
-    await prisma.workoutSession.delete({ where: { id: session.id } });
+  // セットを1つも残さず保存した場合だけ、空になったセッションを掃除する
+  if (clean.length === 0 && !session.memo) {
+    const remaining = await prisma.set.count({ where: { sessionId: session.id } });
+    if (remaining === 0) {
+      await prisma.workoutSession.delete({ where: { id: session.id } });
+    }
   }
 
   revalidateAll();
+  redirect(safePath(redirectTo));
 }
 
 export async function updateSet(id: number, weight: number, reps: number) {
@@ -64,15 +87,19 @@ export async function deleteSessionExercise(sessionId: number, exerciseId: numbe
 }
 
 export async function updateSessionMemo(dateStr: string, memo: string) {
-  const trimmed = memo.trim();
-  const session = await getOrCreateSession(dateStr);
-  await prisma.workoutSession.update({
-    where: { id: session.id },
-    data: { memo: trimmed || null },
+  const date = dateStrToDate(dateStr);
+  const next = memo.trim() || null;
+  const session = await prisma.workoutSession.upsert({
+    where: { date },
+    create: { date, memo: next },
+    update: { memo: next },
   });
-  const remaining = await prisma.set.count({ where: { sessionId: session.id } });
-  if (remaining === 0 && !trimmed) {
-    await prisma.workoutSession.delete({ where: { id: session.id } });
+  // メモを空にした結果、セットも無いセッションになったら掃除
+  if (!next) {
+    const remaining = await prisma.set.count({ where: { sessionId: session.id } });
+    if (remaining === 0) {
+      await prisma.workoutSession.delete({ where: { id: session.id } });
+    }
   }
   revalidateAll();
 }

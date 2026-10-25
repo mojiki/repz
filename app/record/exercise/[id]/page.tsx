@@ -20,24 +20,26 @@ export default async function ExerciseInputPage({
   const { id: idRaw } = await params;
   const sp = await searchParams;
   const id = Number(idRaw);
-  const exercise = await getExercise(id);
-  if (!exercise) notFound();
 
   const dateParam = typeof sp.date === "string" && DATE_RE.test(sp.date) ? sp.date : null;
   const date = dateParam ?? todayStr();
   const isToday = date === todayStr();
+
+  // 4つとも互いに依存しないので同時に投げる (直列にすると往復数ぶん遅くなる)
+  const [exercise, session, previous, pr] = await Promise.all([
+    getExercise(id),
+    getSessionByDate(date),
+    getPreviousSetsForExercise(id, date),
+    getExercisePR(id, date),
+  ]);
+  if (!exercise) notFound();
+
   const backHref = isToday
     ? `/record/${encodeURIComponent(exercise.category)}`
     : `/session/${date}`;
   const backLabel = isToday ? exercise.category : "その日の記録";
 
-  const [session, previous] = await Promise.all([
-    getSessionByDate(date),
-    getPreviousSetsForExercise(id, date),
-  ]);
-
   const todaysSets = (session?.sets ?? []).filter((s) => s.exerciseId === id);
-  const pr = await getExercisePR(id, todaysSets.map((s) => s.id));
 
   return (
     <div className="space-y-4">

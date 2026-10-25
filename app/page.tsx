@@ -37,7 +37,8 @@ export default async function Home() {
           ＋ 記録する
         </Link>
         <div className="grid grid-cols-2 gap-3">
-          <Link href="/recent" className="btn py-4">
+          {/* /recent 経由だとリダイレクトでリクエストが2回直列になるため直接リンクにする */}
+          <Link href={recentDate ? `/session/${recentDate}` : "/recent"} className="btn py-4">
             直近トレ
           </Link>
           <Link href="/body-weight" className="btn py-4">

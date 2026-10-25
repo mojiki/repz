@@ -101,6 +101,21 @@ http://localhost:3000 で起動。ローカルでは Basic 認証は無効（`.e
 - 「今日」は `APP_TZ_OFFSET_MINUTES`（既定 JST）で判定。
 - 1日1セッション（`workout_sessions.date` は unique）。
 
+## レスポンス設計
+
+画面表示の時間は「DB への直列の往復回数 × Vercel と DB の距離」でほぼ決まる（描画自体は数ms）。
+
+- **Vercel の Function Region は DB と同じ地域にする**（Settings → Functions。変更後は再デプロイ）。
+  現状: Turso = AWS ap-northeast-1（東京）、Vercel = 大阪 kix1。東京 hnd1 なら往復がさらに短くなる。
+- **クエリは `include` を使わず、`Promise.all` で並列に投げる**（`lib/queries.ts`）。
+  SQLite では Prisma の `include` が別クエリ＝直列に分解されるため。種目(約40行)は
+  `getExerciseMap()` で1回だけ取り、JS 側でひも付ける。各画面の直列往復は 1〜2 回。
+- **保存はサーバーアクション内で `revalidatePath` + `redirect`**（`saveSets`）。
+  クライアントで `router.push` / `router.refresh` を重ねると、遷移前の画面の再描画や重複取得が発生する。
+  画面に留まる操作（体重・設定など）はアクション応答に再描画が含まれるので `router.refresh()` は不要。
+- **`app/loading.tsx`** で遷移直後にスケルトンを表示（全画面 `force-dynamic` のため体感の改善）。
+- Top の「直近トレ」は `/recent` 経由のリダイレクトを避け、直接 `/session/日付` へリンク。
+
 ## 画面
 
 | パス | 内容 |

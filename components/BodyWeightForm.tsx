@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { saveBodyWeight } from "@/app/actions";
 
 export function BodyWeightForm({
@@ -11,7 +10,6 @@ export function BodyWeightForm({
   today: string;
   defaultWeight: number;
 }) {
-  const router = useRouter();
   const [date, setDate] = useState(today);
   const [weight, setWeight] = useState<number>(defaultWeight);
   const [pending, start] = useTransition();
@@ -20,7 +18,6 @@ export function BodyWeightForm({
     if (!Number.isFinite(weight) || weight <= 0) return;
     start(async () => {
       await saveBodyWeight(date, weight);
-      router.refresh();
     });
   };
 

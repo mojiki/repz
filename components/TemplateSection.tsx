@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { createTemplate, deleteTemplate } from "@/app/actions";
 
 export function TemplateSection({
@@ -10,7 +9,6 @@ export function TemplateSection({
 }: {
   templates: { id: number; name: string; exerciseNames: string[] }[];
 }) {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [pending, start] = useTransition();
 
@@ -31,7 +29,6 @@ export function TemplateSection({
                   if (!confirm(`「${t.name}」を削除しますか?`)) return;
                   start(async () => {
                     await deleteTemplate(t.id);
-                    router.refresh();
                   });
                 }}
                 className="btn btn-sm btn-ghost text-bad"

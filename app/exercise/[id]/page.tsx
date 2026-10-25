@@ -12,13 +12,12 @@ export default async function ExerciseHistoryPage({
 }: PageProps<"/exercise/[id]">) {
   const { id } = await params;
   const exId = Number(id);
-  const exercise = await getExercise(exId);
-  if (!exercise) notFound();
-
-  const [history, pr] = await Promise.all([
+  const [exercise, history, pr] = await Promise.all([
+    getExercise(exId),
     getExerciseHistory(exId),
     getExercisePR(exId),
   ]);
+  if (!exercise) notFound();
   const recent = [...history].reverse().slice(0, 12);
 
   return (
