@@ -151,6 +151,44 @@ export async function getPreviousSetsForExercise(exerciseId: number, beforeDateS
 }
 
 /**
+ * 指定日にやった各種目について「その種目を最後にやった日(指定日より前)」の合計ボリュームを返す。
+ * プログレッシブオーバーロードの確認用 (種目ごとに前回と比べる)。
+ *
+ * 「指定日にやった種目」の絞り込みをリレーションフィルタでDB側に任せているので、
+ * 今日のセッションを取得し終わるのを待たずに、他のクエリと並列に投げられる。
+ */
+export async function getPreviousExerciseTotals(dateStr: string) {
+  const date = dateStrToDate(dateStr);
+  const doneOnDate = { sets: { some: { session: { date } } } };
+  const [sets, sessions] = await Promise.all([
+    prisma.set.findMany({
+      where: { session: { date: { lt: date } }, exercise: doneOnDate },
+      select: { sessionId: true, exerciseId: true, weight: true, reps: true },
+    }),
+    prisma.workoutSession.findMany({
+      where: { date: { lt: date }, sets: { some: { exercise: doneOnDate } } },
+      select: { id: true, date: true },
+    }),
+  ]);
+  const dateById = new Map(sessions.map((s) => [s.id, dateToStr(s.date)]));
+
+  // 種目ごとに、いちばん新しい日付とその日のボリューム合計を求める
+  const latest: Record<number, { date: string; volume: number }> = {};
+  for (const s of sets) {
+    const d = dateById.get(s.sessionId);
+    if (!d) continue;
+    const cur = latest[s.exerciseId];
+    if (!cur || d > cur.date) latest[s.exerciseId] = { date: d, volume: 0 };
+  }
+  for (const s of sets) {
+    const d = dateById.get(s.sessionId);
+    const cur = latest[s.exerciseId];
+    if (d && cur && d === cur.date) cur.volume += s.weight * s.reps;
+  }
+  return latest;
+}
+
+/**
  * 種目の自己ベスト(推定1RM最大)を返す。
  * excludeDateStr を渡すと、その日のセッションのセットは除いて集計する
  * (入力中の日の記録を「過去のベスト」に含めないため)。

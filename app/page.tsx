@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { dateToStr, formatLong, todayStr } from "@/lib/date";
+import { fmtKg } from "@/lib/format";
 import {
   getBodyWeights,
+  getPreviousExerciseTotals,
   getRecentSession,
   getSessionByDate,
   getWeeklyVolume,
@@ -11,17 +13,14 @@ import { DayTrainingCard } from "@/components/DayTrainingCard";
 
 export const dynamic = "force-dynamic";
 
-function fmtKg(n: number) {
-  return `${Math.round(n).toLocaleString("ja-JP")}kg`;
-}
-
 export default async function Home() {
   const today = todayStr();
-  const [weekly, todaySession, recent, weights] = await Promise.all([
+  const [weekly, todaySession, recent, weights, previousTotals] = await Promise.all([
     getWeeklyVolume(today),
     getSessionByDate(today),
     getRecentSession(today),
     getBodyWeights(),
+    getPreviousExerciseTotals(today),
   ]);
 
   const recentDate = recent ? dateToStr(recent.date) : null;
@@ -54,6 +53,7 @@ export default async function Home() {
           sets={todaySession.sets}
           viewAllHref={`/session/${today}`}
           emptyMessage="まだ記録がありません"
+          previous={previousTotals}
         />
       )}
 

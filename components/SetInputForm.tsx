@@ -2,16 +2,21 @@
 
 import { useState, useTransition } from "react";
 import { saveSets, type SetRow } from "@/app/actions";
-import { estimate1RM } from "@/lib/calc";
+import { estimate1RM, totalVolume } from "@/lib/calc";
+import { formatShort } from "@/lib/date";
+import { fmtKg } from "@/lib/format";
+import { VolumeProgress } from "@/components/VolumeProgress";
 
 type Props = {
   dateStr: string;
   exerciseId: number;
   initialSets: SetRow[];
   previousSets: SetRow[];
+  previousDate: string | null;
   prBest1RM: number;
   initialMemo: string;
-  backHref: string;
+  /** 保存後に遷移する先 */
+  afterSaveHref: string;
 };
 
 const STEP = 2.5;
@@ -21,9 +26,10 @@ export function SetInputForm({
   exerciseId,
   initialSets,
   previousSets,
+  previousDate,
   prBest1RM,
   initialMemo,
-  backHref,
+  afterSaveHref,
 }: Props) {
   const [pending, start] = useTransition();
 
@@ -54,12 +60,28 @@ export function SetInputForm({
     const memoChanged = memo.trim() !== initialMemo.trim();
     // 保存 → 遷移はサーバーアクション内の redirect で1往復にまとめている
     start(async () => {
-      await saveSets(dateStr, exerciseId, rows, memoChanged ? memo : undefined, backHref);
+      await saveSets(dateStr, exerciseId, rows, memoChanged ? memo : undefined, afterSaveHref);
     });
   };
 
+  // 入力中の合計と前回の合計 (回数が空欄・0 のセットは数えない)
+  const currentVolume = totalVolume(
+    rows.filter((r) => Number.isFinite(r.weight) && Number.isFinite(r.reps) && r.reps > 0),
+  );
+  const previousVolume = totalVolume(previousSets);
+
   return (
     <div className="space-y-3">
+      {previousVolume > 0 && (
+        <div className="sticky top-[3.4rem] z-[5] rounded-xl border border-border bg-surface/95 px-3 py-2 backdrop-blur">
+          <VolumeProgress
+            arrow
+            label={`この種目 前回${fmtKg(previousVolume)}${previousDate ? `（${formatShort(previousDate)}）` : ""}`}
+            current={currentVolume}
+            previous={previousVolume}
+          />
+        </div>
+      )}
       {rows.map((row, i) => {
         const prev = previousSets[i];
         const isPR = prBest1RM > 0 && estimate1RM(row.weight, row.reps) > prBest1RM + 0.01;

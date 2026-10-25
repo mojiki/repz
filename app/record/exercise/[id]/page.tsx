@@ -38,6 +38,8 @@ export default async function ExerciseInputPage({
     ? `/record/${encodeURIComponent(exercise.category)}`
     : `/session/${date}`;
   const backLabel = isToday ? exercise.category : "その日の記録";
+  // 保存後: 今日の記録ならトップへ (次は別の部位へ移ることが多い)。過去日の編集は元の日の画面へ戻す
+  const afterSaveHref = isToday ? "/" : `/session/${date}`;
 
   const todaysSets = (session?.sets ?? []).filter((s) => s.exerciseId === id);
 
@@ -66,9 +68,10 @@ export default async function ExerciseInputPage({
         exerciseId={id}
         initialSets={todaysSets.map((s) => ({ weight: s.weight, reps: s.reps }))}
         previousSets={previous?.sets.map((s) => ({ weight: s.weight, reps: s.reps })) ?? []}
+        previousDate={previous?.date ?? null}
         prBest1RM={pr.best1RM}
         initialMemo={session?.memo ?? ""}
-        backHref={backHref}
+        afterSaveHref={afterSaveHref}
       />
     </div>
   );
