@@ -104,6 +104,29 @@ export default function HelpPage() {
       </section>
 
       <section className="card space-y-2">
+        <h2 className="font-bold">重量の伸び（種目別）</h2>
+        <p className="text-sm text-muted">
+          「推移」の上部のタブ「重量の伸び（種目別）」で、<b>種目ごとに扱っている重量の変化</b>を見られる。
+          部位 → 種目 → 期間の順に選ぶ（種目は記録のあるものだけ並ぶ）。
+        </p>
+        <ul className="space-y-1 text-sm text-muted">
+          <li>
+            グラフは<b>その日の最大重量</b>（オレンジ）と<b>推定1RM</b>（水色）。
+            <b>大きい点は自己ベスト更新</b>の日（それまでの最高を上回った日。同じ重量は更新にならない）。
+          </li>
+          <li>
+            一覧は新しい順に <b>重量 × 回数</b>、「更新」バッジ、ひとつ前のトレーニング日との差
+            （軽くした日は ▼ で表示）。行をタップするとその日の記録へ。
+          </li>
+          <li>
+            推定1RM は、重量を変えずに回数が増えたときにも伸びる指標。
+            懸垂など自重（0kg）の種目は、重量ではなく最大回数で表示する。
+          </li>
+          <li>最初に開くと、最後にトレーニングした種目が表示される。期間は全期間が初期値。</li>
+        </ul>
+      </section>
+
+      <section className="card space-y-2">
         <h2 className="font-bold">体重</h2>
         <p className="text-sm text-muted">
           日付（既定は今日、過去日も可）＋体重を記録。同じ日にもう一度記録すると上書き。

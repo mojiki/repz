@@ -2,7 +2,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { Exercise } from "@/app/generated/prisma/client";
 import { addDays, dateStrToDate, dateToStr, todayStr, weekStartStr } from "@/lib/date";
-import { estimate1RM } from "@/lib/calc";
+import { estimate1RM, recordFlags } from "@/lib/calc";
 
 export { estimate1RM } from "@/lib/calc";
 
@@ -372,10 +372,20 @@ export async function getExerciseHistory(exerciseId: number) {
     })
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
-  const byDate = new Map<string, { maxWeight: number; best1RM: number; volume: number }>();
+  const byDate = new Map<
+    string,
+    { maxWeight: number; topReps: number; maxReps: number; best1RM: number; volume: number }
+  >();
   for (const s of dated) {
-    const cur = byDate.get(s.date) ?? { maxWeight: 0, best1RM: 0, volume: 0 };
-    cur.maxWeight = Math.max(cur.maxWeight, s.weight);
+    const cur = byDate.get(s.date) ?? { maxWeight: 0, topReps: 0, maxReps: 0, best1RM: 0, volume: 0 };
+    // topReps = 最大重量のセットの回数 (同じ重量が複数あれば多い方)
+    if (s.weight > cur.maxWeight) {
+      cur.maxWeight = s.weight;
+      cur.topReps = s.reps;
+    } else if (s.weight === cur.maxWeight) {
+      cur.topReps = Math.max(cur.topReps, s.reps);
+    }
+    cur.maxReps = Math.max(cur.maxReps, s.reps);
     cur.best1RM = Math.max(cur.best1RM, estimate1RM(s.weight, s.reps));
     cur.volume += s.weight * s.reps;
     byDate.set(s.date, cur);
@@ -383,9 +393,81 @@ export async function getExerciseHistory(exerciseId: number) {
   return [...byDate.entries()].map(([date, v]) => ({
     date,
     maxWeight: Math.round(v.maxWeight * 10) / 10,
+    topReps: v.topReps,
+    maxReps: v.maxReps,
     best1RM: Math.round(v.best1RM * 10) / 10,
     volume: Math.round(v.volume),
   }));
+}
+
+export type WeightPoint = {
+  date: string;
+  /** その日の最大重量 (kg) */
+  maxWeight: number;
+  /** 最大重量のセットの回数 */
+  topReps: number;
+  /** その日の最大回数 (自重種目の指標) */
+  maxReps: number;
+  best1RM: number;
+  volume: number;
+  /** 指標の値 (自重種目は最大回数、それ以外は最大重量) */
+  value: number;
+  /** ひとつ前のトレーニング日の値 (期間より前の日も含む。初回は null) */
+  prev: number | null;
+  /** それまでの最大値を初めて上回った (自己ベスト更新) か。0 / 1 (グラフのデータに載せるため数値) */
+  isRecord: 0 | 1;
+};
+
+/**
+ * 種目の重量の伸び (日ごとの最大重量・推定1RM)。
+ * - 自己ベスト更新・ひとつ前との差は「全期間の履歴」で判定し、そのあとで from 以降に絞る
+ *   (期間の最初の日が、期間より前の記録と比べて更新かどうかを正しく判定するため)。
+ * - 最大重量が一度も 0 より大きくない種目 (懸垂・ディップスなど自重) は、最大回数を指標にする。
+ */
+export async function getWeightSeries(
+  exerciseId: number,
+  from?: string,
+): Promise<{ points: WeightPoint[]; bodyweight: boolean }> {
+  const history = await getExerciseHistory(exerciseId);
+  const bodyweight = history.length > 0 && history.every((h) => h.maxWeight === 0);
+  const values = history.map((h) => (bodyweight ? h.maxReps : h.maxWeight));
+  const flags = recordFlags(values);
+  const all: WeightPoint[] = history.map((h, i) => ({
+    ...h,
+    value: values[i],
+    prev: i > 0 ? values[i - 1] : null,
+    isRecord: flags[i] ? 1 : 0,
+  }));
+  return { points: from ? all.filter((p) => p.date >= from) : all, bodyweight };
+}
+
+/** 指定した大分類の種目のうち、1件でも記録がある種目 (表示順) */
+export async function getExercisesWithRecords(category: string) {
+  const [exercises, counts] = await Promise.all([
+    prisma.exercise.findMany({
+      where: { category },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    }),
+    prisma.set.groupBy({
+      by: ["exerciseId"],
+      where: { exercise: { category } },
+      _count: { _all: true },
+    }),
+  ]);
+  const has = new Set(counts.map((c) => c.exerciseId));
+  return exercises.filter((e) => has.has(e.id));
+}
+
+/** 最後にトレーニングした種目 (一番新しい日のセットの種目)。記録が無ければ null */
+export async function getLastTrainedExercise() {
+  const [last, exMap] = await Promise.all([
+    prisma.set.findFirst({
+      orderBy: [{ session: { date: "desc" } }, { id: "desc" }],
+      select: { exerciseId: true },
+    }),
+    getExerciseMap(),
+  ]);
+  return last ? (exMap.get(last.exerciseId) ?? null) : null;
 }
 
 export async function getBodyWeights() {

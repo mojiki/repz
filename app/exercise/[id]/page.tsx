@@ -38,7 +38,12 @@ export default async function ExerciseHistoryPage({
       </Link>
 
       <section className="card space-y-2">
-        <h2 className="font-bold">重量推移</h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-bold">重量推移</h2>
+          <Link href={`/history/weight?exercise=${exId}`} className="text-xs text-accent">
+            期間を変えて見る →
+          </Link>
+        </div>
         <LineTrend
           data={history}
           xKey="date"

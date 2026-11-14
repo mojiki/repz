@@ -20,6 +20,7 @@ export function LineTrend({
   unit = "",
   yMin,
   labelSuffix = "",
+  markKey,
 }: {
   data: Point[];
   xKey: string;
@@ -30,6 +31,8 @@ export function LineTrend({
   yMin?: number;
   /** ツールチップの日付の後ろに付ける文字 (例: 「〜の週」)。関数は Server から渡せないので文字列 */
   labelSuffix?: string;
+  /** 1 の点を大きく (白縁つきで) 描く。最初の系列だけに適用。自己ベスト更新の強調用 */
+  markKey?: string;
 }) {
   if (data.length === 0) {
     return (
@@ -74,7 +77,7 @@ export function LineTrend({
               name as string,
             ]}
           />
-          {series.map((s) => (
+          {series.map((s, i) => (
             <Line
               key={s.key}
               type="monotone"
@@ -82,7 +85,24 @@ export function LineTrend({
               name={s.name}
               stroke={s.color}
               strokeWidth={2}
-              dot={{ r: 2 }}
+              dot={
+                markKey && i === 0
+                  ? (p) => {
+                      const marked = Number(p.payload?.[markKey]) === 1;
+                      return (
+                        <circle
+                          key={`dot-${p.index}`}
+                          cx={p.cx}
+                          cy={p.cy}
+                          r={marked ? 5 : 2}
+                          fill={s.color}
+                          stroke={marked ? "#ffffff" : s.color}
+                          strokeWidth={marked ? 2 : 0}
+                        />
+                      );
+                    }
+                  : { r: 2 }
+              }
               activeDot={{ r: 4 }}
               isAnimationActive={false}
               connectNulls

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BackLink } from "@/components/ui";
 import { FilterChips } from "@/components/FilterChips";
+import { HistoryTabs } from "@/components/HistoryTabs";
 import { LineTrend } from "@/components/Chart";
 import { addDays, dateStrToDate, formatShort, todayStr, weekStartStr } from "@/lib/date";
 import { fmtKg } from "@/lib/format";
@@ -105,6 +106,8 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
         <h1 className="text-lg font-bold">推移</h1>
         <p className="text-xs text-muted">総重量 ＝ 重量 × 回数の合計（kg）</p>
       </div>
+
+      <HistoryTabs active="volume" />
 
       <div className="card space-y-3">
         <FilterChips

@@ -10,6 +10,19 @@ export function totalVolume(sets: { weight: number; reps: number }[]): number {
   return sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
 }
 
+/**
+ * 時系列の値のうち、「それまでの最大値を初めて上回った点」を true にする (自己ベスト更新の判定)。
+ * 最初の点は比べる相手がいないので false。同じ値は更新にしない。
+ */
+export function recordFlags(values: number[]): boolean[] {
+  let best = -Infinity;
+  return values.map((v, i) => {
+    const isRecord = i > 0 && v > best;
+    if (v > best) best = v;
+    return isRecord;
+  });
+}
+
 export type VolumeComparison = {
   /** exceeded=前回超え / equal=同じ / short=まだ足りない */
   kind: "exceeded" | "equal" | "short";
