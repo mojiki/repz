@@ -281,6 +281,80 @@ export async function getWeeklyVolume(refDateStr: string = todayStr()) {
   };
 }
 
+export type VolumeUnit = "day" | "week";
+export type VolumePoint = {
+  /** day: トレーニング日 / week: その週の月曜日 ("YYYY-MM-DD") */
+  date: string;
+  /** 総重量 = Σ(重量 × 回数) (kg, 整数に丸め) */
+  volume: number;
+  /** その点に含まれるトレーニング日数 (day は常に 1、トレーニングしなかった週は 0) */
+  sessions: number;
+};
+
+/**
+ * 総重量(ボリューム)の推移。
+ * - day : トレーニングした日ごと
+ * - week: 月曜始まりの週ごと。トレーニングしなかった週も 0 で埋める
+ *         (休んだ期間も推移の一部なので、点を飛ばさない)
+ * category を渡すとその大分類の種目だけで集計し、from を渡すとその日以降だけ集計する。
+ * セットとセッション日付は互いに依存しないので並列に取得し、日付との結び付けは JS 側で行う。
+ */
+export async function getVolumeSeries(opts: {
+  unit: VolumeUnit;
+  from?: string;
+  category?: string;
+  today?: string;
+}): Promise<VolumePoint[]> {
+  const fromDate = opts.from ? dateStrToDate(opts.from) : undefined;
+  const [sets, sessions] = await Promise.all([
+    prisma.set.findMany({
+      where: {
+        ...(opts.category ? { exercise: { category: opts.category } } : {}),
+        ...(fromDate ? { session: { date: { gte: fromDate } } } : {}),
+      },
+      select: { sessionId: true, weight: true, reps: true },
+    }),
+    prisma.workoutSession.findMany({
+      where: fromDate ? { date: { gte: fromDate } } : {},
+      select: { id: true, date: true },
+    }),
+  ]);
+
+  const dateById = new Map(sessions.map((s) => [s.id, dateToStr(s.date)]));
+  const byDate = new Map<string, number>(); // 該当するセットがあった日だけが入る
+  for (const s of sets) {
+    const d = dateById.get(s.sessionId);
+    if (d) byDate.set(d, (byDate.get(d) ?? 0) + s.weight * s.reps);
+  }
+  if (byDate.size === 0) return [];
+
+  const days = [...byDate.keys()].sort();
+  if (opts.unit === "day") {
+    return days.map((date) => ({
+      date,
+      volume: Math.round(byDate.get(date)!),
+      sessions: 1,
+    }));
+  }
+
+  const byWeek = new Map<string, { volume: number; sessions: number }>();
+  for (const d of days) {
+    const w = weekStartStr(d);
+    const cur = byWeek.get(w) ?? { volume: 0, sessions: 0 };
+    cur.volume += byDate.get(d)!;
+    cur.sessions += 1;
+    byWeek.set(w, cur);
+  }
+  const start = weekStartStr(opts.from ?? days[0]);
+  const end = weekStartStr(opts.today ?? todayStr());
+  const points: VolumePoint[] = [];
+  for (let w = start; w <= end; w = addDays(w, 7)) {
+    const cur = byWeek.get(w);
+    points.push({ date: w, volume: Math.round(cur?.volume ?? 0), sessions: cur?.sessions ?? 0 });
+  }
+  return points;
+}
+
 /** 種目の MAX重量 / 推定1RM の日次推移 */
 export async function getExerciseHistory(exerciseId: number) {
   const [sets, sessions] = await Promise.all([

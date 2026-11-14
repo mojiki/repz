@@ -35,10 +35,13 @@ export default async function Home() {
         <Link href="/record" className="btn btn-primary py-5 text-lg">
           ＋ 記録する
         </Link>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {/* /recent 経由だとリダイレクトでリクエストが2回直列になるため直接リンクにする */}
           <Link href={recentDate ? `/session/${recentDate}` : "/recent"} className="btn py-4">
             直近トレ
+          </Link>
+          <Link href="/history" className="btn py-4">
+            推移
           </Link>
           <Link href="/body-weight" className="btn py-4">
             体重

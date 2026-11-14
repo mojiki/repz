@@ -50,6 +50,18 @@ export default async function ExerciseHistoryPage({
         />
       </section>
 
+      <section className="card space-y-2">
+        <h2 className="font-bold">ボリューム推移</h2>
+        <p className="text-xs text-muted">その日のこの種目の 重量 × 回数 の合計</p>
+        <LineTrend
+          data={history}
+          xKey="date"
+          unit="kg"
+          yMin={0}
+          series={[{ key: "volume", name: "ボリューム", color: "#34d399" }]}
+        />
+      </section>
+
       <section className="card">
         <h2 className="mb-2 font-bold">最近の記録</h2>
         {recent.length > 0 ? (

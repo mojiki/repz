@@ -75,8 +75,32 @@ export default function HelpPage() {
         <h2 className="font-bold">週間ボリューム</h2>
         <p className="text-sm text-muted">
           ボリューム＝重量 × 回数の合計。週は月曜始まり。「今週 vs 前週」の増減%を表示。
-          種目名をタップすると重量推移グラフ。
+          種目名をタップすると、その種目の重量とボリュームの推移グラフ。
         </p>
+      </section>
+
+      <section className="card space-y-2">
+        <h2 className="font-bold">推移（総重量のグラフ）</h2>
+        <p className="text-sm text-muted">
+          トップの「推移」から、<b>総重量（重量 × 回数の合計）の変化</b>をグラフと一覧で見られる。
+        </p>
+        <ul className="space-y-1 text-sm text-muted">
+          <li>
+            <span className="font-bold text-foreground">単位</span> … 週別（月曜始まり。
+            トレーニングしなかった週は 0 で表示）／日別。
+          </li>
+          <li>
+            <span className="font-bold text-foreground">期間</span> … 1か月・3か月・6か月・全期間。
+          </li>
+          <li>
+            <span className="font-bold text-foreground">部位</span> … 胸・背中などで絞り込み。
+            日別は部位が違う日で大きく変わるので、部位で絞ると比べやすい。
+          </li>
+          <li>
+            一覧の行をタップすると、日別はその日の記録、週別はその週の内訳へ。
+            グラフ最後の点が今週のときは、今週の途中までの合計。
+          </li>
+        </ul>
       </section>
 
       <section className="card space-y-2">

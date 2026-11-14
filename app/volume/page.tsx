@@ -38,7 +38,12 @@ export default async function VolumePage({ searchParams }: PageProps<"/volume">)
       </div>
 
       <section className="card space-y-3">
-        <h2 className="font-bold">総ボリューム（今週 vs 先週）</h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-bold">総ボリューム（今週 vs 先週）</h2>
+          <Link href="/history" className="text-xs text-accent">
+            推移グラフ →
+          </Link>
+        </div>
         <VolumeDiff
           thisTotal={weekly.thisTotal}
           lastTotal={weekly.lastTotal}

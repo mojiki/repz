@@ -18,12 +18,18 @@ export function LineTrend({
   series,
   height = 220,
   unit = "",
+  yMin,
+  labelSuffix = "",
 }: {
   data: Point[];
   xKey: string;
   series: { key: string; name: string; color: string }[];
   height?: number;
   unit?: string;
+  /** 縦軸の下限。総重量のように 0 が意味を持つ量は 0 を指定する (未指定は自動) */
+  yMin?: number;
+  /** ツールチップの日付の後ろに付ける文字 (例: 「〜の週」)。関数は Server から渡せないので文字列 */
+  labelSuffix?: string;
 }) {
   if (data.length === 0) {
     return (
@@ -32,10 +38,17 @@ export function LineTrend({
       </div>
     );
   }
+  // 縦軸の目盛りの幅は、最大値の桁数から決める (固定幅だと 4 桁以上の総重量で先頭の桁が切れる)
+  const maxY = Math.max(
+    0,
+    ...data.flatMap((d) => series.map((s) => Math.abs(Number(d[s.key]) || 0))),
+  );
+  const yWidth = Math.max(40, String(Math.ceil(maxY)).length * 7 + 14);
+
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="#2a3441" strokeDasharray="3 3" />
           <XAxis
             dataKey={xKey}
@@ -45,8 +58,8 @@ export function LineTrend({
           />
           <YAxis
             tick={{ fill: "#93a1b0", fontSize: 11 }}
-            width={44}
-            domain={["auto", "auto"]}
+            width={yWidth}
+            domain={[yMin ?? "auto", "auto"]}
           />
           <Tooltip
             contentStyle={{
@@ -55,7 +68,11 @@ export function LineTrend({
               borderRadius: 12,
               color: "#e8edf2",
             }}
-            formatter={(value, name) => [`${value}${unit}`, name as string]}
+            labelFormatter={(label) => `${label}${labelSuffix}`}
+            formatter={(value, name) => [
+              `${typeof value === "number" ? value.toLocaleString("ja-JP") : value}${unit}`,
+              name as string,
+            ]}
           />
           {series.map((s) => (
             <Line
